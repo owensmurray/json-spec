@@ -1,0 +1,5 @@
+packages:
+  "."
+package json-spec
+  ghc-options:
+    -Werror

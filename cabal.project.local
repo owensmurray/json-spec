@@ -1,0 +1,8 @@
+tests: True
+package json-spec
+  ghc-options:
+    -fplugin=OM.Plugin.Imports
+    -plugin-package=om-plugin-imports-0.1.0.3
+    -package-db=/home/rowens/.cabal/store/ghc-9.4.5/package.db
+    -plugin-package=ghc-tags-plugin
+    -fplugin=Plugin.GhcTags
