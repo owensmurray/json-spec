@@ -2,6 +2,7 @@ cabal-version:       3.0
 name:                json-spec
 version:             0.1.0.0
 synopsis:            Type-level JSON specification
+maintainer:          rick@owensmurray.com
 description:         = Motivation
                      This package provides a way to specify the shape of
                      your JSON data at the type level. The particular use
@@ -103,11 +104,11 @@ description:         = Motivation
                      >     =
                      >       pure User { name , lastLogin }
 
--- homepage:            
-license:             NONE
+homepage:            https://github.com/owensmurray/json-spec
+license:             MIT
 license-file:        LICENSE
 author:              Rick Owens
--- category:            
+category:            JSON
 build-type:          Simple
 extra-source-files:
   README.md
