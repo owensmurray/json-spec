@@ -17,7 +17,7 @@ import Data.ByteString.Lazy (ByteString)
 import Data.JsonSpec (Field(Field), HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), HasJsonEncodingSpec(EncodingSpec, toJSONStructure),
   SpecJSON(SpecJSON), Specification(JsonDateTime, JsonEither, JsonInt,
-  JsonNullable, JsonNum, JsonObject, JsonString, JsonTag), Tag(Tag))
+  JsonNullable, JsonNum, JsonObject, JsonString, JsonTag, JsonLet, JsonRef), Tag(Tag))
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific, floatingOrInteger)
 import Data.Text (Text)
@@ -103,6 +103,26 @@ main =
                 { name = "foo"
                 , lastLogin =
                     UTCTime (toEnum 0) 0
+                }
+        in
+          actual `shouldBe` expected
+      
+      it "decodes let" $
+        let
+          actual :: Either String Triangle
+          actual =
+            A.eitherDecode
+              "{ \"vertex1\" : { \"x\": 1, \"y\": 2, \"z\": 3 }, \
+              \  \"vertex2\" : { \"x\": 4, \"y\": 5, \"z\": 6 }, \
+              \  \"vertex3\" : { \"x\": 7, \"y\": 8, \"z\": 9 } }"
+          
+          expected :: Either String Triangle
+          expected =
+            Right
+              Triangle
+                { vertex1 = Vertex 1 2 3
+                , vertex2 = Vertex 4 5 6
+                , vertex3 = Vertex 7 8 9
                 }
         in
           actual `shouldBe` expected
@@ -313,3 +333,68 @@ instance HasJsonDecodingSpec User where
       pure User { name , lastLogin }
 
 
+data Vertex = Vertex
+  { x :: Int
+  , y :: Int
+  , z :: Int
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON Vertex)
+
+instance HasJsonEncodingSpec Vertex where
+  type EncodingSpec Vertex =
+    JsonObject
+      '[ '("x", JsonInt)
+       , '("y", JsonInt)
+       , '("z", JsonInt)
+       ]
+  toJSONStructure Vertex {x, y, z} =
+    (Field @"x" x,
+    (Field @"y" y,
+    (Field @"z" z,
+    ())))
+instance HasJsonDecodingSpec Vertex where
+  type DecodingSpec Vertex = EncodingSpec Vertex
+  fromJSONStructure
+      (Field @"x" x,
+      (Field @"y" y,
+      (Field @"z" z,
+      ())))
+    =
+      pure Vertex { x, y, z }
+
+data Triangle = Triangle
+  { vertex1 :: Vertex
+  , vertex2 :: Vertex
+  , vertex3 :: Vertex
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON Triangle)
+
+instance HasJsonEncodingSpec Triangle where
+  type EncodingSpec Triangle =
+    JsonLet '[ '("Vertex", EncodingSpec Vertex) ]
+      (JsonObject
+        '[ '("vertex1", JsonRef "Vertex")
+         , '("vertex2", JsonRef "Vertex")
+         , '("vertex3", JsonRef "Vertex")
+         ])
+  toJSONStructure Triangle {vertex1, vertex2, vertex3} =
+    (Field @"vertex1" (toJSONStructure vertex1),
+    (Field @"vertex2" (toJSONStructure vertex2),
+    (Field @"vertex3" (toJSONStructure vertex3),
+    ())))
+instance HasJsonDecodingSpec Triangle where
+  type DecodingSpec Triangle = EncodingSpec Triangle
+  fromJSONStructure
+      (Field @"vertex1" rawVertex1,
+      (Field @"vertex2" rawVertex2,
+      (Field @"vertex3" rawVertex3,
+      ())))
+    = do
+      vertex1 <- fromJSONStructure rawVertex1
+      vertex2 <- fromJSONStructure rawVertex2
+      vertex3 <- fromJSONStructure rawVertex3
+      pure Triangle{vertex1, vertex2, vertex3}
+
+-- TODO: add an example for LabelledTree

@@ -108,7 +108,7 @@ import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
   toJSONStructure), StructureToJSON(reprToJSON))
 import Data.JsonSpec.Spec (Field(Field), Specification(JsonArray,
   JsonBool, JsonDateTime, JsonEither, JsonInt, JsonNullable, JsonNum,
-  JsonObject, JsonString, JsonTag), Tag(Tag), JSONStructure)
+  JsonObject, JsonString, JsonTag, JsonLet, JsonRef), Tag(Tag), JSONStructure)
 
 
 {- |
