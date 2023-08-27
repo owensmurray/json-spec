@@ -12,17 +12,16 @@
 module Main (main) where
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson.Types (Parser)
 import Data.ByteString.Lazy (ByteString)
 import Data.JsonSpec (Field(Field), HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), HasJsonEncodingSpec(EncodingSpec, toJSONStructure),
   SpecJSON(SpecJSON), Specification(JsonDateTime, JsonEither, JsonInt,
   JsonNullable, JsonNum, JsonObject, JsonString, JsonTag), Tag(Tag))
-import Data.Proxy (Proxy(Proxy))
-import Data.Scientific (Scientific, floatingOrInteger)
+import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime(UTCTime))
-import GHC.TypeLits (KnownSymbol, symbolVal)
+import Prelude (Applicative(pure), Either(Left, Right), Enum(toEnum),
+  Maybe(Just, Nothing), ($), Eq, IO, Int, Show, String, realToFrac)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import qualified Data.Aeson as A
 
@@ -95,7 +94,7 @@ main =
           actual =
             A.eitherDecode
               "{ \"name\": \"foo\", \"last-login\": \"1858-11-17T00:00:00Z\" }"
-          
+
           expected :: Either String User
           expected =
             Right
@@ -143,7 +142,7 @@ sampleTestObject =
   TestObj
     { foo = "foo"
     , bar = 1
-    , baz = 
+    , baz =
         TestSubObj
           { foo2 = "foo2"
           , bar2 = 0
@@ -158,7 +157,7 @@ sampleTestObjectWithNull=
   TestObj
     { foo = "foo"
     , bar = 1
-    , baz = 
+    , baz =
         TestSubObj
           { foo2 = "foo2"
           , bar2 = 0
@@ -180,7 +179,7 @@ instance HasJsonEncodingSpec TestSum where
       (JsonObject '[
         '("tag", JsonTag "a"),
         '("content", JsonObject [
-          '("int-field", JsonNum),
+          '("int-field", JsonInt),
           '("txt-field", JsonString)
         ])
       ])
@@ -192,7 +191,7 @@ instance HasJsonEncodingSpec TestSum where
       Left
         (Field @"tag" (Tag @"a"),
         (Field @"content"
-          ( (Field @"int-field" (realToFrac i)
+          ( (Field @"int-field" i
           , (Field @"txt-field" t
           , ()
           )
@@ -206,9 +205,15 @@ instance HasJsonEncodingSpec TestSum where
 instance HasJsonDecodingSpec TestSum where
   type DecodingSpec TestSum = EncodingSpec TestSum
   fromJSONStructure = \case
-    Left (Field Tag, (Field (rawInt, (Field txt, ())), ())) -> do
-      int <- parseInt rawInt
-      pure (TestA int txt)
+    Left
+        (Field @"tag" Tag,
+        (Field @"content"
+          (Field @"int-field" int,
+          (Field @"txt-field" txt,
+          ())),
+        ()))
+      ->
+        pure (TestA int txt)
     Right _ ->
       pure TestB
 
@@ -258,33 +263,21 @@ data TestSubObj = TestSubObj
 instance HasJsonEncodingSpec TestSubObj where
   type EncodingSpec TestSubObj =
     JsonObject
-      '[
-        '("foo", JsonString),
-        '("bar", JsonNum)
-      ]
+      '[ '("foo", JsonString)
+       , '("bar", JsonInt)
+       ]
   toJSONStructure TestSubObj { foo2 , bar2 } =
     (Field @"foo" foo2,
-    (Field @"bar" (realToFrac bar2),
+    (Field @"bar" bar2,
     ()))
 instance HasJsonDecodingSpec TestSubObj where
   type DecodingSpec TestSubObj = EncodingSpec TestSubObj
-  fromJSONStructure ((Field foo2), (rawBar, ())) = do
-    bar2 <- parseInt rawBar
-    pure TestSubObj {foo2 , bar2}
-
-
-parseInt
-  :: forall key.
-     (KnownSymbol key)
-  => Field key Scientific
-  -> Parser Int
-parseInt (Field val) =
-  case floatingOrInteger val of
-    Left (_ :: Float) ->
-      fail $
-        "Bad integer for property: "
-        <> symbolVal (Proxy @key)
-    Right i -> pure i
+  fromJSONStructure
+      (Field @"foo" foo2,
+      (Field @"bar" bar2,
+      ()))
+    =
+      pure TestSubObj {foo2 , bar2}
 
 
 data User = User
