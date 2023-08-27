@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 {- | Decoding using specs. -}
@@ -14,15 +15,18 @@ module Data.JsonSpec.Decode (
 
 
 import Control.Applicative (Alternative((<|>)))
-import Data.Aeson (Value(Null, Object), parseJSON, withArray, withObject,
-  withScientific, withText)
+import Data.Aeson (FromJSON(parseJSON), Value(Null, Object), withArray,
+  withObject, withScientific, withText)
 import Data.Aeson.Types (Parser)
-import Data.JsonSpec.Spec (Field(Field), Tag(Tag), JSONStructure,
-  Specification, sym)
+import Data.JsonSpec.Spec (Field(Field), Rec(Rec), Tag(Tag),
+  JSONStructure, JStruct, Specification, sym)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
+import Prelude (Applicative(pure), Either(Left, Right), Eq((==)),
+  Functor(fmap), Maybe(Just, Nothing), MonadFail(fail), Semigroup((<>)),
+  Traversable(traverse), ($), (.), (<$>), Int)
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Vector as Vector
 
@@ -103,5 +107,14 @@ instance (StructureFromJSON a) => StructureFromJSON (Maybe a) where
     case val of
       Null -> pure Nothing
       _ -> Just <$> reprParseJSON val
+instance
+    (StructureFromJSON (JStruct ('(name, Rec env name spec) : env) spec))
+  =>
+    StructureFromJSON (Rec env name spec)
+  where
+  reprParseJSON val =
+    Rec <$> reprParseJSON val
+
+
 
 
