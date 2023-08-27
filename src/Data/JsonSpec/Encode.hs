@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Data.JsonSpec.Encode (
@@ -14,12 +15,14 @@ module Data.JsonSpec.Encode (
 
 
 import Data.Aeson (ToJSON(toJSON), Value)
-import Data.JsonSpec.Spec (Field(Field), JSONStructure, Specification,
-  Tag, sym)
+import Data.JsonSpec.Spec (Field(Field), Rec(unRec), JSONStructure,
+  JStruct, Specification, Tag, sym)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
+import Prelude (Either(Left, Right), Functor(fmap), Monoid(mempty),
+  (.), Int, Maybe, maybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 
@@ -56,7 +59,7 @@ instance StructureToJSON Scientific where
 instance StructureToJSON Int where
   reprToJSON = toJSON
 instance (ToJSONObject (a, b)) => StructureToJSON (a, b) where
-  reprToJSON = A.Object . toJSONObject 
+  reprToJSON = A.Object . toJSONObject
 instance (StructureToJSON left, StructureToJSON right) => StructureToJSON (Either left right) where
   reprToJSON = \case
     Left val -> reprToJSON val
@@ -69,6 +72,12 @@ instance StructureToJSON UTCTime where
   reprToJSON = toJSON
 instance (StructureToJSON a) => StructureToJSON (Maybe a) where
   reprToJSON = maybe A.Null reprToJSON
+instance
+    (StructureToJSON (JStruct ('(name, Rec env name spec) : env) spec))
+  =>
+    StructureToJSON (Rec env name spec)
+  where
+    reprToJSON = reprToJSON . unRec
 
 
 {- |

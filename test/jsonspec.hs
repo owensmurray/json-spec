@@ -12,17 +12,18 @@
 module Main (main) where
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson.Types (Parser)
 import Data.ByteString.Lazy (ByteString)
 import Data.JsonSpec (Field(Field), HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), HasJsonEncodingSpec(EncodingSpec, toJSONStructure),
-  SpecJSON(SpecJSON), Specification(JsonDateTime, JsonEither, JsonInt,
-  JsonNullable, JsonNum, JsonObject, JsonString, JsonTag), Tag(Tag))
-import Data.Proxy (Proxy(Proxy))
-import Data.Scientific (Scientific, floatingOrInteger)
+  Rec(Rec, unRec), SpecJSON(SpecJSON), Specification(JsonArray,
+  JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
+  JsonObject, JsonRef, JsonString, JsonTag), Tag(Tag))
+import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime(UTCTime))
-import GHC.TypeLits (KnownSymbol, symbolVal)
+import Prelude (Applicative(pure), Either(Left, Right), Enum(toEnum),
+  Maybe(Just, Nothing), Traversable(traverse), ($), (.), Eq, IO, Int,
+  Show, String, realToFrac)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import qualified Data.Aeson as A
 
@@ -95,7 +96,7 @@ main =
           actual =
             A.eitherDecode
               "{ \"name\": \"foo\", \"last-login\": \"1858-11-17T00:00:00Z\" }"
-          
+
           expected :: Either String User
           expected =
             Right
@@ -106,6 +107,102 @@ main =
                 }
         in
           actual `shouldBe` expected
+
+      describe "let" $ do
+        it "decodes let" $
+          let
+            actual :: Either String Triangle
+            actual =
+              A.eitherDecode
+                "{ \"vertex1\" : { \"x\": 1, \"y\": 2, \"z\": 3 }, \
+                \  \"vertex2\" : { \"x\": 4, \"y\": 5, \"z\": 6 }, \
+                \  \"vertex3\" : { \"x\": 7, \"y\": 8, \"z\": 9 } }"
+
+            expected :: Either String Triangle
+            expected =
+              Right
+                Triangle
+                  { vertex1 = Vertex 1 2 3
+                  , vertex2 = Vertex 4 5 6
+                  , vertex3 = Vertex 7 8 9
+                  }
+          in
+            actual `shouldBe` expected
+        it "encodes let" $
+            let
+              actual :: ByteString
+              actual =
+                A.encode
+                  Triangle
+                    { vertex1 = Vertex 1 2 3
+                    , vertex2 = Vertex 4 5 6
+                    , vertex3 = Vertex 7 8 9
+                    }
+
+              expected :: ByteString
+              expected = "{\"vertex1\":{\"x\":1,\"y\":2,\"z\":3},\"vertex2\":{\"x\":4,\"y\":5,\"z\":6},\"vertex3\":{\"x\":7,\"y\":8,\"z\":9}}"
+            in
+              actual `shouldBe` expected
+
+      describe "recursive types" $ do
+        it "decodes" $
+          let
+            actual :: Either String LabelledTree
+            actual =
+              A.eitherDecode
+                "{\"children\":[{\"children\":[{\"children\":[],\"label\":\"child1\"},{\"children\":[],\"label\":\"child2\"}],\"label\":\"parent\"}],\"label\":\"grandparent\"}"
+
+            expected :: Either String LabelledTree
+            expected =
+              Right
+                LabelledTree
+                  { label = "grandparent"
+                  , children =
+                      [ LabelledTree
+                          { label = "parent"
+                          , children =
+                              [ LabelledTree
+                                  { label = "child1"
+                                  , children = []
+                                  }
+                              , LabelledTree
+                                  { label = "child2"
+                                  , children = []
+                                  }
+                              ]
+                          }
+                      ]
+                  }
+          in
+            actual `shouldBe` expected
+        it "decodes" $
+          let
+            actual :: ByteString
+            actual =
+              A.encode
+                LabelledTree
+                  { label = "grandparent"
+                  , children =
+                      [ LabelledTree
+                          { label = "parent"
+                          , children =
+                              [ LabelledTree
+                                  { label = "child1"
+                                  , children = []
+                                  }
+                              , LabelledTree
+                                  { label = "child2"
+                                  , children = []
+                                  }
+                              ]
+                          }
+                      ]
+                  }
+            expected :: ByteString
+            expected = "{\"children\":[{\"children\":[{\"children\":[],\"label\":\"child1\"},{\"children\":[],\"label\":\"child2\"}],\"label\":\"parent\"}],\"label\":\"grandparent\"}"
+          in
+            actual `shouldBe` expected
+          
 
       describe "nullable" $ do
         it "encodes product" $
@@ -143,12 +240,11 @@ sampleTestObject =
   TestObj
     { foo = "foo"
     , bar = 1
-    , baz = 
+    , baz =
         TestSubObj
           { foo2 = "foo2"
           , bar2 = 0
           }
-
     , qux = Just 100
     }
 
@@ -158,7 +254,7 @@ sampleTestObjectWithNull=
   TestObj
     { foo = "foo"
     , bar = 1
-    , baz = 
+    , baz =
         TestSubObj
           { foo2 = "foo2"
           , bar2 = 0
@@ -180,7 +276,7 @@ instance HasJsonEncodingSpec TestSum where
       (JsonObject '[
         '("tag", JsonTag "a"),
         '("content", JsonObject [
-          '("int-field", JsonNum),
+          '("int-field", JsonInt),
           '("txt-field", JsonString)
         ])
       ])
@@ -192,7 +288,7 @@ instance HasJsonEncodingSpec TestSum where
       Left
         (Field @"tag" (Tag @"a"),
         (Field @"content"
-          ( (Field @"int-field" (realToFrac i)
+          ( (Field @"int-field" i
           , (Field @"txt-field" t
           , ()
           )
@@ -206,9 +302,15 @@ instance HasJsonEncodingSpec TestSum where
 instance HasJsonDecodingSpec TestSum where
   type DecodingSpec TestSum = EncodingSpec TestSum
   fromJSONStructure = \case
-    Left (Field Tag, (Field (rawInt, (Field txt, ())), ())) -> do
-      int <- parseInt rawInt
-      pure (TestA int txt)
+    Left
+        (Field @"tag" Tag,
+        (Field @"content"
+          (Field @"int-field" int,
+          (Field @"txt-field" txt,
+          ())),
+        ()))
+      ->
+        pure (TestA int txt)
     Right _ ->
       pure TestB
 
@@ -258,33 +360,21 @@ data TestSubObj = TestSubObj
 instance HasJsonEncodingSpec TestSubObj where
   type EncodingSpec TestSubObj =
     JsonObject
-      '[
-        '("foo", JsonString),
-        '("bar", JsonNum)
-      ]
+      '[ '("foo", JsonString)
+       , '("bar", JsonInt)
+       ]
   toJSONStructure TestSubObj { foo2 , bar2 } =
     (Field @"foo" foo2,
-    (Field @"bar" (realToFrac bar2),
+    (Field @"bar" bar2,
     ()))
 instance HasJsonDecodingSpec TestSubObj where
   type DecodingSpec TestSubObj = EncodingSpec TestSubObj
-  fromJSONStructure ((Field foo2), (rawBar, ())) = do
-    bar2 <- parseInt rawBar
-    pure TestSubObj {foo2 , bar2}
-
-
-parseInt
-  :: forall key.
-     (KnownSymbol key)
-  => Field key Scientific
-  -> Parser Int
-parseInt (Field val) =
-  case floatingOrInteger val of
-    Left (_ :: Float) ->
-      fail $
-        "Bad integer for property: "
-        <> symbolVal (Proxy @key)
-    Right i -> pure i
+  fromJSONStructure
+      (Field @"foo" foo2,
+      (Field @"bar" bar2,
+      ()))
+    =
+      pure TestSubObj {foo2 , bar2}
 
 
 data User = User
@@ -311,5 +401,105 @@ instance HasJsonDecodingSpec User where
       ()))
     =
       pure User { name , lastLogin }
+
+
+data Vertex = Vertex
+  { x :: Int
+  , y :: Int
+  , z :: Int
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON Vertex)
+instance HasJsonEncodingSpec Vertex where
+  type EncodingSpec Vertex =
+    JsonObject
+      '[ '("x", JsonInt)
+       , '("y", JsonInt)
+       , '("z", JsonInt)
+       ]
+  toJSONStructure Vertex {x, y, z} =
+    (Field @"x" x,
+    (Field @"y" y,
+    (Field @"z" z,
+    ())))
+instance HasJsonDecodingSpec Vertex where
+  type DecodingSpec Vertex = EncodingSpec Vertex
+  fromJSONStructure
+      (Field @"x" x,
+      (Field @"y" y,
+      (Field @"z" z,
+      ())))
+    =
+      pure Vertex { x, y, z }
+
+
+data Triangle = Triangle
+  { vertex1 :: Vertex
+  , vertex2 :: Vertex
+  , vertex3 :: Vertex
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON Triangle)
+instance HasJsonEncodingSpec Triangle where
+  type EncodingSpec Triangle =
+    JsonLet
+      '[ '("Vertex", EncodingSpec Vertex) ]
+      (JsonObject
+        '[ '("vertex1", JsonRef "Vertex")
+         , '("vertex2", JsonRef "Vertex")
+         , '("vertex3", JsonRef "Vertex")
+         ])
+  toJSONStructure Triangle {vertex1, vertex2, vertex3} =
+    (Field @"vertex1" (toJSONStructure vertex1),
+    (Field @"vertex2" (toJSONStructure vertex2),
+    (Field @"vertex3" (toJSONStructure vertex3),
+    ())))
+instance HasJsonDecodingSpec Triangle where
+  type DecodingSpec Triangle = EncodingSpec Triangle
+  fromJSONStructure
+      (Field @"vertex1" rawVertex1,
+      (Field @"vertex2" rawVertex2,
+      (Field @"vertex3" rawVertex3,
+      ())))
+    = do
+      vertex1 <- fromJSONStructure rawVertex1
+      vertex2 <- fromJSONStructure rawVertex2
+      vertex3 <- fromJSONStructure rawVertex3
+      pure Triangle{vertex1, vertex2, vertex3}
+
+
+data LabelledTree = LabelledTree
+  {    label :: Text
+  , children :: [LabelledTree]
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON LabelledTree)
+instance HasJsonEncodingSpec LabelledTree where
+  type EncodingSpec LabelledTree =
+      JsonLet
+        '[ '("LabelledTree",
+               JsonObject
+                 '[ '("label", JsonString)
+                  , '("children", JsonArray (JsonRef "LabelledTree"))
+                  ]
+            )
+         ]
+        (JsonRef "LabelledTree")
+  toJSONStructure LabelledTree {label , children } =
+    (Field @"label" label,
+    (Field @"children"
+      [ Rec (toJSONStructure child)
+      | child <- children
+      ],
+    ()))
+instance HasJsonDecodingSpec LabelledTree where
+  type DecodingSpec LabelledTree = EncodingSpec LabelledTree
+  fromJSONStructure
+      (Field @"label" label,
+      (Field @"children" children_,
+      ()))
+    = do
+      children <- traverse (fromJSONStructure . unRec) children_
+      pure LabelledTree { label , children }
 
 

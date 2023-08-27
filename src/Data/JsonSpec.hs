@@ -32,7 +32,7 @@
   >       ()))
   >     =
   >       pure User { name , lastLogin }
-  
+
   = Motivation
 
   The particular use cases we focus on are enabling (but not providing
@@ -98,6 +98,7 @@ module Data.JsonSpec (
   Tag(..),
   Field(..),
   JSONStructure,
+  Rec(..),
 ) where
 
 
@@ -106,9 +107,10 @@ import Data.JsonSpec.Decode (HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), StructureFromJSON(reprParseJSON))
 import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
   toJSONStructure), StructureToJSON(reprToJSON))
-import Data.JsonSpec.Spec (Field(Field), Specification(JsonArray,
-  JsonBool, JsonDateTime, JsonEither, JsonInt, JsonNullable, JsonNum,
-  JsonObject, JsonString, JsonTag), Tag(Tag), JSONStructure)
+import Data.JsonSpec.Spec (Field(Field), Rec(Rec, unRec),
+  Specification(JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt,
+  JsonLet, JsonNullable, JsonNum, JsonObject, JsonRef, JsonString,
+  JsonTag), Tag(Tag), JSONStructure)
 
 
 {- |
