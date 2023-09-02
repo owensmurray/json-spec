@@ -15,9 +15,10 @@ module Data.JsonSpec.Encode (
 
 
 import Data.Aeson (ToJSON(toJSON), Value)
-import Data.JsonSpec.Spec (Field(Field), Rec(unRec), JSONStructure,
-  JStruct, Specification, Tag, sym)
+import Data.JsonSpec.Spec (Field(Field), Rec(unRec),
+  Specification(JsonArray), JSONStructure, JStruct, Tag, sym)
 import Data.Scientific (Scientific)
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
@@ -25,6 +26,7 @@ import Prelude (Either(Left, Right), Functor(fmap), Monoid(mempty),
   (.), Int, Maybe, maybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Set as Set
 
 
 {- |
@@ -37,6 +39,9 @@ class HasJsonEncodingSpec a where
 
   {- | Encode the value into the structure appropriate for the specification. -}
   toJSONStructure :: a -> JSONStructure (EncodingSpec a)
+instance (HasJsonEncodingSpec a) => HasJsonEncodingSpec (Set a) where
+  type EncodingSpec (Set a) = JsonArray (EncodingSpec a)
+  toJSONStructure = fmap toJSONStructure . Set.toList
 
 
 {- |
