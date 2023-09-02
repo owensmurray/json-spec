@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                json-spec
-version:             0.2.0.0
+version:             0.2.1.0
 synopsis:            Type-level JSON specification
 maintainer:          rick@owensmurray.com
 description:         = Motivation
@@ -116,11 +116,9 @@ extra-source-files:
 
 common dependencies
   build-depends:
-    , aeson      >= 2.1.2.1  && < 2.2
+    , aeson      >= 2.2.0.0  && < 2.3
     , base       >= 4.17.1.0 && < 4.18
-    , bytestring >= 0.11.4.0 && < 0.12
-    , lens       >= 5.2.2    && < 5.3
-    , openapi3   >= 3.2.3    && < 3.3
+    , containers >= 0.6.7    && < 0.7
     , scientific >= 0.3.7.0  && < 0.4
     , text       >= 2.0.2    && < 2.1
     , time       >= 1.12.2   && < 1.13
@@ -154,4 +152,5 @@ test-suite jsonspec
   default-language: Haskell2010
   build-depends:
     , json-spec
-    , hspec >= 2.11.1 && < 2.12
+    , bytestring >= 0.11.4.0 && < 0.12
+    , hspec      >= 2.11.1   && < 2.12
