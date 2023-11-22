@@ -55,6 +55,10 @@ jobs:
       # Cabal build
       - name: Cabal Bulid
         run: cabal build all
+
+      # Cabal test
+      - name: Cabal Test
+        run: cabal test all
           
   build-lower-bounds:
     name: Haskell Build (lower bounds)
@@ -111,3 +115,6 @@ jobs:
       - name: Cabal Bulid
         run: cabal build all
 
+      # Cabal test
+      - name: Cabal Test
+        run: cabal test all
