@@ -1,7 +1,7 @@
 packages: .
 constraints:
   aeson == 2.0.3.0,
-  base == 4.15.0.0,
+  base == 4.16.0.0,
   bytestring == 0.10.12.1,
   containers == 0.6.4.1,
   hspec == 2.8.5,
