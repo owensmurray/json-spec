@@ -64,7 +64,6 @@ jobs:
         run: |
           project="$(cat cabal.project | grep -v -- '-Werror')"
           echo "$project" > cabal.project
-          cat cabal.project
           cabal test all
           
   build-lower-bounds:
