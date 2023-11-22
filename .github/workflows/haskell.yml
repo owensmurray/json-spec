@@ -27,7 +27,7 @@ jobs:
       - name: Configure the Build
         run: |
           rm cabal.project.freeze
-          cabal configure
+          cabal configure --enable-tests
           cabal build --dry-run
 
       # Restore cache
@@ -54,7 +54,17 @@ jobs:
 
       # Cabal build
       - name: Cabal Bulid
-        run: cabal build all
+        run: |
+          project="$(cat cabal.project | grep -v -- '-Werror')"
+          echo "$project" > cabal.project
+          cabal build all
+
+      # Cabal test
+      - name: Cabal Test
+        run: |
+          project="$(cat cabal.project | grep -v -- '-Werror')"
+          echo "$project" > cabal.project
+          cabal test all
           
   build-lower-bounds:
     name: Haskell Build (lower bounds)
@@ -62,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc-version: ['9.0.1']
+        ghc-version: ['9.2.1']
         cabal-version: ['3.8.1.0']
     steps:
       # Checkout
@@ -82,7 +92,7 @@ jobs:
         run: |
           mv cabal.project.lb cabal.project
           rm cabal.project.freeze
-          cabal configure
+          cabal configure --enable-tests
           cabal build --dry-run
 
       # Restore cache
@@ -111,3 +121,6 @@ jobs:
       - name: Cabal Bulid
         run: cabal build all
 
+      # Cabal test
+      - name: Cabal Test
+        run: cabal test all
