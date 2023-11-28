@@ -90,7 +90,20 @@ jobs:
       # Generate Plan
       - name: Configure the Build
         run: |
-          mv cabal.project.lb cabal.project
+          (cat << EOF
+          packages: .
+          constraints:
+            aeson == 2.0.3.0,
+            base == 4.16.0.0,
+            bytestring == 0.11.1.0,
+            containers == 0.6.4.1,
+            hspec == 2.8.5,
+            scientific == 0.3.7.0,
+            text == 1.2.5.0,
+            time == 1.9.3,
+            vector == 0.12.3.1
+          EOF
+          ) > cabal.project
           rm cabal.project.freeze
           cabal configure --enable-tests
           cabal build --dry-run
