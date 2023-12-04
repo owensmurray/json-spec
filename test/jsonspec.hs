@@ -9,6 +9,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+{-# OPTIONS_GHC -Wwarn #-} {- Because of GHC-69797 -}
+
 module Main (main) where
 
 import Data.Aeson (FromJSON, ToJSON)
