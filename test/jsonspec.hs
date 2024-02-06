@@ -13,19 +13,15 @@
 
 module Main (main) where
 
+
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString.Lazy (ByteString)
-import Data.JsonSpec (Field(Field), HasJsonDecodingSpec(DecodingSpec,
-  fromJSONStructure), HasJsonEncodingSpec(EncodingSpec, toJSONStructure),
-  Rec(Rec, unRec), SpecJSON(SpecJSON), Specification(JsonArray,
-  JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
-  JsonObject, JsonRef, JsonString, JsonTag), Tag(Tag))
+import Data.JsonSpec
+import Data.Proxy
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime(UTCTime))
-import Prelude (Applicative(pure), Either(Left, Right), Enum(toEnum),
-  Maybe(Just, Nothing), Traversable(traverse), ($), (.), Eq, IO, Int,
-  Show, String, realToFrac)
+import Prelude 
 import Test.Hspec (describe, hspec, it, shouldBe)
 import qualified Data.Aeson as A
 
@@ -204,7 +200,7 @@ main =
             expected = "{\"children\":[{\"children\":[{\"children\":[],\"label\":\"child1\"},{\"children\":[],\"label\":\"child2\"}],\"label\":\"parent\"}],\"label\":\"grandparent\"}"
           in
             actual `shouldBe` expected
-          
+
 
       describe "nullable" $ do
         it "encodes product" $
@@ -236,6 +232,46 @@ main =
         in
           actual `shouldBe` expected
 
+      it "eitherDecode" $
+        let
+          actual
+            :: Either
+                 String
+                 (Field "foo" Text,
+                 (Field "bar" Scientific,
+                 (Field "baz"
+                   (Field "foo" Text,
+                   (Field "bar" Int,
+                   ())),
+                 (Field "qux" (Maybe Int),
+                 ()))))
+          actual =
+            A.eitherDecode
+              "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null}"
+              >>= eitherDecode (Proxy @(EncodingSpec TestObj))
+          expected
+            :: Either
+               String
+               (Field "foo" Text,
+               (Field "bar" Scientific,
+               (Field "baz"
+                 (Field "foo" Text,
+                 (Field "bar" Int,
+                 ())),
+               (Field "qux" (Maybe Int),
+               ()))))
+          expected =
+            Right
+              (Field @"foo" "foo",
+              (Field @"bar" 1.0,
+              (Field @"baz"
+                (Field @"foo" "foo2",
+                (Field @"bar" 0,
+                ())),
+              (Field @"qux" Nothing,
+              ()))))
+        in
+          actual `shouldBe` expected
 
 sampleTestObject :: TestObj
 sampleTestObject =
