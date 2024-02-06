@@ -1,4 +1,4 @@
-on: [pull_request]
+on: [push]
 name: Haskell Builds
 jobs:
   build:
@@ -8,6 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         ghc-version:
+          - '9.6'
           - '9.8'
         cabal-version: ['3.8.1.0']
     steps:
@@ -27,7 +28,7 @@ jobs:
       - name: Configure the Build
         run: |
           rm cabal.project.freeze
-          cabal configure --enable-tests
+          cabal configure --enable-tests --disable-optimization
           cabal build --dry-run
 
       # Restore cache
@@ -105,7 +106,7 @@ jobs:
           EOF
           ) > cabal.project
           rm cabal.project.freeze
-          cabal configure --enable-tests
+          cabal configure --enable-tests --disable-optimization
           cabal build --dry-run
 
       # Restore cache

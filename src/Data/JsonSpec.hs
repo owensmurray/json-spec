@@ -86,7 +86,7 @@
   works by using a type family to transform the spec into a new Haskell
   type whose structure is analogous to the specification. You are then
   required to transform your regular business value into a value of
-  this \"structural type\" (I strongly recommend using type holes to
+  this ''structural type'' (I strongly recommend using type holes to
   make this easier). Values of the structural type will always encode
   into specification-complient JSON.
 -}
@@ -99,18 +99,21 @@ module Data.JsonSpec (
   Field(..),
   JSONStructure,
   Rec(..),
+  eitherDecode,
+  StructureFromJSON,
 ) where
 
 
 import Data.Aeson (FromJSON(parseJSON), ToJSON(toJSON))
 import Data.JsonSpec.Decode (HasJsonDecodingSpec(DecodingSpec,
-  fromJSONStructure), StructureFromJSON(reprParseJSON))
+  fromJSONStructure), StructureFromJSON(reprParseJSON), eitherDecode)
 import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
   toJSONStructure), StructureToJSON(reprToJSON))
 import Data.JsonSpec.Spec (Field(Field), Rec(Rec, unRec),
   Specification(JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt,
   JsonLet, JsonNullable, JsonNum, JsonObject, JsonRef, JsonString,
   JsonTag), Tag(Tag), JSONStructure)
+import Prelude ((.), (<$>), (=<<))
 
 
 {- |

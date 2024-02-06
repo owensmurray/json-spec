@@ -11,22 +11,23 @@
 module Data.JsonSpec.Decode (
   StructureFromJSON(..),
   HasJsonDecodingSpec(..),
+  eitherDecode,
 ) where
 
 
 import Control.Applicative (Alternative((<|>)))
-import Data.Aeson (FromJSON(parseJSON), Value(Null, Object), withArray,
-  withObject, withScientific, withText)
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (FromJSON(parseJSON), Value(Null, Object),
+  Parser, parseEither, withArray, withObject, withScientific, withText)
 import Data.JsonSpec.Spec (Field(Field), Rec(Rec), Tag(Tag),
   JSONStructure, JStruct, Specification, sym)
+import Data.Proxy (Proxy)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
 import Prelude (Applicative(pure), Either(Left, Right), Eq((==)),
   Functor(fmap), Maybe(Just, Nothing), MonadFail(fail), Semigroup((<>)),
-  Traversable(traverse), ($), (.), (<$>), Int)
+  Traversable(traverse), ($), (.), (<$>), Int, String)
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Vector as Vector
 
@@ -116,5 +117,17 @@ instance
     Rec <$> reprParseJSON val
 
 
+{-|
+  Directly decode some JSON accoring to a spec without going through
+  any To/FromJSON instances.
+-}
+eitherDecode
+  :: forall spec.
+     (StructureFromJSON (JSONStructure spec))
+   => Proxy (spec :: Specification)
+  -> Value
+  -> Either String (JSONStructure spec)
+eitherDecode _spec =
+  parseEither reprParseJSON
 
 

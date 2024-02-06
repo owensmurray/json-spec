@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -282,6 +283,7 @@ data Tag (a :: Symbol) = Tag
 
 {-| Structural representation of an object field. -}
 newtype Field (key :: Symbol) t = Field t
+  deriving stock (Show, Eq)
 
 
 {- |
