@@ -27,7 +27,7 @@ import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
 import Prelude (Applicative(pure), Either(Left, Right), Eq((==)),
   Functor(fmap), Maybe(Just, Nothing), MonadFail(fail), Semigroup((<>)),
-  Traversable(traverse), ($), (.), (<$>), Int, String)
+  Traversable(traverse), ($), (.), (<$>), Bool, Int, String)
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Vector as Vector
 
@@ -78,6 +78,8 @@ instance StructureFromJSON Int where
 instance StructureFromJSON () where
   reprParseJSON =
     withObject "empty object" $ \_ -> pure ()
+instance StructureFromJSON Bool where
+  reprParseJSON = parseJSON
 instance (KnownSymbol key, StructureFromJSON val, StructureFromJSON more) => StructureFromJSON (Field key val, more) where
   reprParseJSON =
     withObject "object" $ \o -> do
