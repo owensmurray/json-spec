@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                json-spec
-version:             0.2.2.0
+version:             0.2.3.0
 synopsis:            Type-level JSON specification
 maintainer:          rick@owensmurray.com
 description:         See the README at: https://github.com/owensmurray/json-spec#json-spec
