@@ -16,12 +16,18 @@ module Main (main) where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString.Lazy (ByteString)
-import Data.JsonSpec
-import Data.Proxy
+import Data.JsonSpec (Field(Field), HasJsonDecodingSpec(DecodingSpec,
+  fromJSONStructure), HasJsonEncodingSpec(EncodingSpec, toJSONStructure),
+  Rec(Rec, unRec), SpecJSON(SpecJSON), Specification(JsonArray, JsonBool,
+  JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
+  JsonObject, JsonRef, JsonString, JsonTag), Tag(Tag), eitherDecode)
+import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime(UTCTime))
-import Prelude 
+import Prelude (Applicative(pure), Bool(False, True), Either(Left, Right),
+  Enum(toEnum), Maybe(Just, Nothing), Monad((>>=)), Traversable(traverse),
+  ($), (.), Eq, IO, Int, Show, String, realToFrac)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import qualified Data.Aeson as A
 
@@ -35,7 +41,7 @@ main =
           actual :: ByteString
           actual = A.encode $ sampleTestObject
           expected :: ByteString
-          expected = "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":100}"
+          expected = "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qoo\":true,\"qux\":100}"
         in
           actual `shouldBe` expected
 
@@ -44,7 +50,7 @@ main =
           actual :: Either String TestObj
           actual =
             A.eitherDecode
-              "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":100}"
+              "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":100,\"qoo\":true}"
           expected :: Either String TestObj
           expected = Right sampleTestObject
         in
@@ -208,7 +214,7 @@ main =
             actual :: ByteString
             actual = A.encode $ sampleTestObjectWithNull
             expected :: ByteString
-            expected = "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null}"
+            expected = "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qoo\":false,\"qux\":null}"
           in
             actual `shouldBe` expected
 
@@ -217,7 +223,7 @@ main =
             actual :: Either String TestObj
             actual =
               A.eitherDecode
-                "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null}"
+                "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null,\"qoo\":false}"
             expected :: Either String TestObj
             expected = Right sampleTestObjectWithNull
           in
@@ -244,10 +250,11 @@ main =
                    (Field "bar" Int,
                    ())),
                  (Field "qux" (Maybe Int),
-                 ()))))
+                 (Field "qoo" Bool,
+                 ())))))
           actual =
             A.eitherDecode
-              "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null}"
+              "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null,\"qoo\":false}"
               >>= eitherDecode (Proxy @(EncodingSpec TestObj))
           expected
             :: Either
@@ -259,7 +266,8 @@ main =
                  (Field "bar" Int,
                  ())),
                (Field "qux" (Maybe Int),
-               ()))))
+               (Field "qoo" Bool,
+               ())))))
           expected =
             Right
               (Field @"foo" "foo",
@@ -269,7 +277,8 @@ main =
                 (Field @"bar" 0,
                 ())),
               (Field @"qux" Nothing,
-              ()))))
+              (Field @"qoo" False,
+              ())))))
         in
           actual `shouldBe` expected
 
@@ -284,6 +293,7 @@ sampleTestObject =
           , bar2 = 0
           }
     , qux = Just 100
+    , qoo = True
     }
 
 
@@ -299,6 +309,7 @@ sampleTestObjectWithNull=
           }
 
     , qux = Nothing
+    , qoo = False
     }
 
 
@@ -358,6 +369,7 @@ data TestObj = TestObj
   , bar :: Scientific
   , baz :: TestSubObj
   , qux :: Maybe Int
+  , qoo :: Bool
   }
   deriving stock (Show, Eq)
   deriving ToJSON via (SpecJSON TestObj)
@@ -369,14 +381,16 @@ instance HasJsonEncodingSpec TestObj where
         '("foo", JsonString),
         '("bar", JsonNum),
         '("baz", EncodingSpec TestSubObj),
-        '("qux", JsonNullable JsonInt)
+        '("qux", JsonNullable JsonInt),
+        '("qoo", JsonBool)
       ]
-  toJSONStructure TestObj { foo , bar , baz, qux } =
+  toJSONStructure TestObj { foo , bar , baz, qux, qoo } =
     (Field @"foo" foo,
     (Field @"bar" (realToFrac bar),
     (Field @"baz" (toJSONStructure baz),
     (Field @"qux" qux,
-    ()))))
+    (Field @"qoo" qoo,
+    ())))))
 instance HasJsonDecodingSpec TestObj where
   type DecodingSpec TestObj = EncodingSpec TestObj
   fromJSONStructure
@@ -384,10 +398,11 @@ instance HasJsonDecodingSpec TestObj where
       (Field @"bar" bar,
       (Field @"baz" rawBaz,
       (Field @"qux" qux,
-      ()))))
+      (Field @"qoo" qoo,
+      ())))))
     = do
       baz <- fromJSONStructure rawBaz
-      pure $ TestObj { foo, bar, baz, qux }
+      pure $ TestObj { foo, bar, baz, qux, qoo }
 
 
 data TestSubObj = TestSubObj

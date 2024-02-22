@@ -23,7 +23,7 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
 import Prelude (Either(Left, Right), Functor(fmap), Monoid(mempty),
-  (.), Int, Maybe, maybe)
+  (.), Bool, Int, Maybe, maybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Set as Set
@@ -57,6 +57,8 @@ class StructureToJSON a where
   reprToJSON :: a -> Value
 instance StructureToJSON () where
   reprToJSON () = A.object []
+instance StructureToJSON Bool where
+  reprToJSON = toJSON
 instance StructureToJSON Text where
   reprToJSON = toJSON
 instance StructureToJSON Scientific where
