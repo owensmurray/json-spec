@@ -58,29 +58,31 @@ the structural type will always encode into specification-complient JSON.
 
 ## Example
 
-> data User = User
->   { name :: Text
->   , lastLogin :: UTCTime
->   }
->   deriving stock (Show, Eq)
->   deriving (ToJSON, FromJSON) via (SpecJSON User)
-> instance HasJsonEncodingSpec User where
->   type EncodingSpec User =
->     JsonObject
->       '[ '("name", JsonString)
->        , '("last-login", JsonDateTime)
->        ]
->   toJSONStructure user =
->     (Field @"name" (name user),
->     (Field @"last-login" (lastLogin user),
->     ()))
-> instance HasJsonDecodingSpec User where
->   type DecodingSpec User = EncodingSpec User
->   fromJSONStructure
->       (Field @"name" name,
->       (Field @"last-login" lastLogin,
->       ()))
->     =
->       pure User { name , lastLogin }
+```haskell
+data User = User
+  { name :: Text
+  , lastLogin :: UTCTime
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON User)
+instance HasJsonEncodingSpec User where
+  type EncodingSpec User =
+    JsonObject
+      '[ '("name", JsonString)
+       , '("last-login", JsonDateTime)
+       ]
+  toJSONStructure user =
+    (Field @"name" (name user),
+    (Field @"last-login" (lastLogin user),
+    ()))
+instance HasJsonDecodingSpec User where
+  type DecodingSpec User = EncodingSpec User
+  fromJSONStructure
+      (Field @"name" name,
+      (Field @"last-login" lastLogin,
+      ()))
+    =
+      pure User { name , lastLogin }
+```
 
 For more examples, take a look at the test suite.
