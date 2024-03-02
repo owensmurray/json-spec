@@ -16,10 +16,10 @@
   >   deriving (ToJSON, FromJSON) via (SpecJSON User)
   > instance HasJsonEncodingSpec User where
   >   type EncodingSpec User =
-  >     JsonObject
-  >       '[ '("name", JsonString)
-  >        , '("last-login", JsonDateTime)
-  >        ]
+  >     JsonObject '[
+  >       Required "name" JsonString,
+  >       Required "last-login" JsonDateTime
+  >     ]
   >   toJSONStructure user =
   >     (Field @"name" (name user),
   >     (Field @"last-login" (lastLogin user),
@@ -35,60 +35,37 @@
 
   = Motivation
 
-  The particular use cases we focus on are enabling (but not providing
-  in this package):
+  The primary motivation is to allow you to avoid Aeson Generic instances
+  while still getting the possibility of auto-generated (and therefore
+  /correct/) documentation and code in your servant APIs.
 
-  1. Auto-generating documentation to ensure it is correct.
-  2. Auto-generating client code in front-end languages to ensure it is correct.
+  Historically, the trade-off has been:
 
-  There are already tools available to achieve this, but they all have one
-  major drawback: they rely on generically derived Aeson instances. Some
-  people strongly object to using generically derived Aeson instances
-  for encoding/decoding http api data because of how brittle it is. It
-  can be surprisingly easy accidentally break your API without noticing
-  because you don't realize that a small change to some type somewhere
-  affects the API representation. Avoiding this requires very strict
-  discipline about how you organize and maintain your code. E.g. you
-  will see a lot of comments like
+  1. Use Generic instances, and therefore your API is brittle. Changes
+     to Deeply nested object might unexpectedly change (and break) your
+     API. You must structure your Haskell types exactly as they are
+     rendered into JSON, which may not always be "natural" and easy to
+     work with. In exchange, you get the ability to auto-derive matching
+     ToSchema instances along with various code generation tools that
+     all understand Aeson Generic instances.
 
-  > --| BEWARE, Changing any of the types in this file will change the API
-  > -- representation!!
-  > module My.API (...) where
+  2. Hand-write your ToJSON and FromJSON instances, which means you
+     get to structure your Haskell types in the way that works best
+     for Haskell, while structuring your JSON in the way that works
+     best for your API. It also means you can more easily support "old"
+     decoding versions and more easily maintain backwards compatibility,
+     etc. In exchange, you have to to hand-write your ToSchema instances,
+     and code generation is basically out.
 
-  But then the types in this api might reference types in in other modules
-  where it isn't as obvious that you might be changing the api when you
-  make an update.
+  The goal of this library is to provide a way to hand-write the encoding
+  and decoding of your JSON using type-level 'Specification's, while
+  still allowing the use of tools that can interpret the specification
+  and auto-generate ToSchema instances and code.
 
-  I have even seen people go so far as to mandate that /every/ type
-  appearing on the API must be in some similar \"API\" module. This
-  usually ends badly because you end up with a bunch of seemingly spurious
-  (and quite tedious) translations between between \"business\" types and
-  almost identical \"API\" types.
+  The tooling ecosystem that knows how to interpret 'Specification's
+  is still pretty new, but it at least includes OpenApi compatibility
+  (i.e. ToSchema instances) and Elm code generation.
 
-  The other option is to simply not use generically derived instances
-  and code all or some of your 'ToJSON'/'FromJSON' instances by hand. That
-  (sometimes) helps solve the problem of making it a little more obvious
-  when you are making a breaking api change. And it definitely helps
-  with the ability to update the haskell type for some business purpose
-  while keeping the encoding backwards compatible.
-
-  The problem now though is that you can't take advantage of any of the
-  above tooling without writing every instance by hand. Writing all the
-  individual instances by hand defeat's the purpose because you are back
-  to being unsure whether they are all in sync!
-
-  The approach this library takes is to take a cue from `servant` and
-  provide a way to specify the JSON encoding at the type level. You
-  must manually specify the encoding, but you only have to do so once
-  (at the type level). Other tools can then inspect the type using
-  either type families or type classes to generate the appropriate
-  artifacts or behavior. Aeson integration (provided by this package)
-  works by using a type family to transform the spec into a new Haskell
-  type whose structure is analogous to the specification. You are then
-  required to transform your regular business value into a value of
-  this ''structural type'' (I strongly recommend using type holes to
-  make this easier). Values of the structural type will always encode
-  into specification-complient JSON.
 -}
 module Data.JsonSpec (
   Specification(..),
@@ -101,6 +78,7 @@ module Data.JsonSpec (
   Rec(..),
   eitherDecode,
   StructureFromJSON,
+  FieldSpec(..)
 ) where
 
 
@@ -109,10 +87,10 @@ import Data.JsonSpec.Decode (HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), StructureFromJSON(reprParseJSON), eitherDecode)
 import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
   toJSONStructure), StructureToJSON(reprToJSON))
-import Data.JsonSpec.Spec (Field(Field), Rec(Rec, unRec),
-  Specification(JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt,
-  JsonLet, JsonNullable, JsonNum, JsonObject, JsonRef, JsonString,
-  JsonTag), Tag(Tag), JSONStructure)
+import Data.JsonSpec.Spec (Field(Field, unField), FieldSpec(Optional,
+  Required), Rec(Rec, unRec), Specification(JsonArray, JsonBool,
+  JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
+  JsonObject, JsonRef, JsonString, JsonTag), Tag(Tag), JSONStructure)
 import Prelude ((.), (<$>), (=<<))
 
 

@@ -22,8 +22,8 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
-import Prelude (Either(Left, Right), Functor(fmap), Monoid(mempty),
-  (.), Bool, Int, Maybe, maybe)
+import Prelude (Either(Left, Right), Functor(fmap), Maybe(Just, Nothing),
+  Monoid(mempty), (.), Bool, Int, maybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Set as Set
@@ -108,5 +108,14 @@ instance (KnownSymbol key, StructureToJSON val, ToJSONObject more) => ToJSONObje
       (sym @key)
       (reprToJSON val)
       (toJSONObject more)
+instance (KnownSymbol key, StructureToJSON val, ToJSONObject more) => ToJSONObject (Maybe (Field key val), more) where
+  toJSONObject (mval, more) =
+    case mval of
+      Nothing -> toJSONObject more
+      Just (Field val) ->
+        KM.insert
+          (sym @key)
+          (reprToJSON val)
+          (toJSONObject more)
 
 

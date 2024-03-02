@@ -89,6 +89,16 @@ instance (KnownSymbol key, StructureFromJSON val, StructureFromJSON more) => Str
         Just rawVal -> do
           val <- reprParseJSON rawVal
           pure (Field val, more)
+instance (KnownSymbol key, StructureFromJSON val, StructureFromJSON more) => StructureFromJSON (Maybe (Field key val), more) where
+  reprParseJSON =
+    withObject "object" $ \o -> do
+      more <- reprParseJSON (Object o)
+      case KM.lookup (sym @key) o of
+        Nothing ->
+          pure (Nothing, more)
+        Just rawVal -> do
+          val <- reprParseJSON rawVal
+          pure (Just (Field val), more)
 instance (StructureFromJSON left, StructureFromJSON right) => StructureFromJSON (Either left right) where
   reprParseJSON v =
     (Left <$> reprParseJSON v)

@@ -8,26 +8,29 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_GHC -Wwarn #-} {- Because of GHC-69797 -}
 
 module Main (main) where
 
-
+import Control.Monad (join)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString.Lazy (ByteString)
-import Data.JsonSpec (Field(Field), HasJsonDecodingSpec(DecodingSpec,
-  fromJSONStructure), HasJsonEncodingSpec(EncodingSpec, toJSONStructure),
-  Rec(Rec, unRec), SpecJSON(SpecJSON), Specification(JsonArray, JsonBool,
-  JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
-  JsonObject, JsonRef, JsonString, JsonTag), Tag(Tag), eitherDecode)
+import Data.JsonSpec (Field(Field, unField), FieldSpec(Optional,
+  Required), HasJsonDecodingSpec(DecodingSpec, fromJSONStructure),
+  HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Rec(Rec, unRec),
+  SpecJSON(SpecJSON), Specification(JsonArray, JsonBool, JsonDateTime,
+  JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject,
+  JsonRef, JsonString, JsonTag), Tag(Tag), eitherDecode)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime(UTCTime))
-import Prelude (Applicative(pure), Bool(False, True), Either(Left, Right),
-  Enum(toEnum), Maybe(Just, Nothing), Monad((>>=)), Traversable(traverse),
-  ($), (.), Eq, IO, Int, Show, String, realToFrac)
+import OM.Show (ShowJ(ShowJ))
+import Prelude (Applicative(pure), Bool(False, True), Either(Left,
+  Right), Enum(toEnum), Functor(fmap), Maybe(Just, Nothing), Monad((>>=)),
+  Traversable(traverse), ($), (.), Eq, IO, Int, Show, String, realToFrac)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import qualified Data.Aeson as A
 
@@ -111,6 +114,47 @@ main =
                 }
         in
           actual `shouldBe` expected
+
+      describe "optionality" $ do
+        let
+          obj :: TestOptionality
+          obj =
+            TestOptionality
+              { toFoo = Nothing
+              , toBar = Nothing
+              , toBaz = Nothing
+              , toQux = 1
+              }
+
+        it "encodes" $
+          let
+            actual :: ByteString
+            actual = A.encode obj
+
+            expected :: ByteString
+            expected = "{\"bar\":null,\"baz\":null,\"qux\":1}"
+          in
+            actual `shouldBe` expected
+
+        it "decodes missing fields" $
+          let
+            actual :: Either String TestOptionality
+            actual = A.eitherDecode "{\"bar\":null,\"qux\":1}"
+            
+            expected :: Either String TestOptionality
+            expected = Right obj
+          in
+            actual `shouldBe` expected
+
+        it "decodes explicit null" $
+          let
+            actual :: Either String TestOptionality
+            actual = A.eitherDecode "{\"bar\":null,\"baz\":null,\"qux\":1}"
+            
+            expected :: Either String TestOptionality
+            expected = Right obj
+          in
+            actual `shouldBe` expected
 
       describe "let" $ do
         it "decodes let" $
@@ -244,7 +288,7 @@ main =
             :: Either
                  String
                  (Field "foo" Text,
-                 (Field "bar" Scientific,
+                 (Maybe (Field "bar" Scientific),
                  (Field "baz"
                    (Field "foo" Text,
                    (Field "bar" Int,
@@ -260,7 +304,7 @@ main =
             :: Either
                String
                (Field "foo" Text,
-               (Field "bar" Scientific,
+               (Maybe (Field "bar" Scientific),
                (Field "baz"
                  (Field "foo" Text,
                  (Field "bar" Int,
@@ -271,7 +315,7 @@ main =
           expected =
             Right
               (Field @"foo" "foo",
-              (Field @"bar" 1.0,
+              (Just (Field @"bar" 1.0),
               (Field @"baz"
                 (Field @"foo" "foo2",
                 (Field @"bar" 0,
@@ -286,7 +330,7 @@ sampleTestObject :: TestObj
 sampleTestObject =
   TestObj
     { foo = "foo"
-    , bar = 1
+    , bar = Just 1
     , baz =
         TestSubObj
           { foo2 = "foo2"
@@ -301,7 +345,7 @@ sampleTestObjectWithNull:: TestObj
 sampleTestObjectWithNull=
   TestObj
     { foo = "foo"
-    , bar = 1
+    , bar = Just 1
     , baz =
         TestSubObj
           { foo2 = "foo2"
@@ -323,14 +367,14 @@ instance HasJsonEncodingSpec TestSum where
   type EncodingSpec TestSum =
     JsonEither
       (JsonObject '[
-        '("tag", JsonTag "a"),
-        '("content", JsonObject [
-          '("int-field", JsonInt),
-          '("txt-field", JsonString)
+        Required "tag" (JsonTag "a"),
+        Required "content" (JsonObject [
+          Required "int-field" JsonInt,
+          Required "txt-field" JsonString
         ])
       ])
       (JsonObject '[
-        '("tag", JsonTag "b")
+        Required "tag" (JsonTag "b")
       ])
   toJSONStructure = \case
     TestA i t ->
@@ -366,7 +410,7 @@ instance HasJsonDecodingSpec TestSum where
 
 data TestObj = TestObj
   { foo :: Text
-  , bar :: Scientific
+  , bar :: Maybe Scientific
   , baz :: TestSubObj
   , qux :: Maybe Int
   , qoo :: Bool
@@ -378,15 +422,15 @@ instance HasJsonEncodingSpec TestObj where
   type EncodingSpec TestObj =
     JsonObject
       '[
-        '("foo", JsonString),
-        '("bar", JsonNum),
-        '("baz", EncodingSpec TestSubObj),
-        '("qux", JsonNullable JsonInt),
-        '("qoo", JsonBool)
+        Required "foo" JsonString,
+        Optional "bar" JsonNum,
+        Required "baz" (EncodingSpec TestSubObj),
+        Required "qux" (JsonNullable JsonInt),
+        Required "qoo" JsonBool
       ]
   toJSONStructure TestObj { foo , bar , baz, qux, qoo } =
     (Field @"foo" foo,
-    (Field @"bar" (realToFrac bar),
+    (fmap (Field @"bar" . realToFrac) bar,
     (Field @"baz" (toJSONStructure baz),
     (Field @"qux" qux,
     (Field @"qoo" qoo,
@@ -395,14 +439,14 @@ instance HasJsonDecodingSpec TestObj where
   type DecodingSpec TestObj = EncodingSpec TestObj
   fromJSONStructure
       (Field @"foo" foo,
-      (Field @"bar" bar,
+      (fmap (unField @"bar") -> bar,
       (Field @"baz" rawBaz,
       (Field @"qux" qux,
       (Field @"qoo" qoo,
       ())))))
     = do
       baz <- fromJSONStructure rawBaz
-      pure $ TestObj { foo, bar, baz, qux, qoo }
+      pure TestObj { foo, bar, baz, qux, qoo }
 
 
 data TestSubObj = TestSubObj
@@ -413,8 +457,8 @@ data TestSubObj = TestSubObj
 instance HasJsonEncodingSpec TestSubObj where
   type EncodingSpec TestSubObj =
     JsonObject
-      '[ '("foo", JsonString)
-       , '("bar", JsonInt)
+      '[ Required "foo" JsonString
+       , Required "bar" JsonInt
        ]
   toJSONStructure TestSubObj { foo2 , bar2 } =
     (Field @"foo" foo2,
@@ -439,8 +483,8 @@ data User = User
 instance HasJsonEncodingSpec User where
   type EncodingSpec User =
     JsonObject
-      '[ '("name", JsonString)
-       , '("last-login", JsonDateTime)
+      '[ Required "name" JsonString
+       , Required "last-login" JsonDateTime
        ]
   toJSONStructure user =
     (Field @"name" (name user),
@@ -466,9 +510,9 @@ data Vertex = Vertex
 instance HasJsonEncodingSpec Vertex where
   type EncodingSpec Vertex =
     JsonObject
-      '[ '("x", JsonInt)
-       , '("y", JsonInt)
-       , '("z", JsonInt)
+      '[ Required "x" JsonInt
+       , Required "y" JsonInt
+       , Required "z" JsonInt
        ]
   toJSONStructure Vertex {x, y, z} =
     (Field @"x" x,
@@ -498,9 +542,9 @@ instance HasJsonEncodingSpec Triangle where
     JsonLet
       '[ '("Vertex", EncodingSpec Vertex) ]
       (JsonObject
-        '[ '("vertex1", JsonRef "Vertex")
-         , '("vertex2", JsonRef "Vertex")
-         , '("vertex3", JsonRef "Vertex")
+        '[ Required "vertex1" (JsonRef "Vertex")
+         , Required "vertex2" (JsonRef "Vertex")
+         , Required "vertex3" (JsonRef "Vertex")
          ])
   toJSONStructure Triangle {vertex1, vertex2, vertex3} =
     (Field @"vertex1" (toJSONStructure vertex1),
@@ -532,8 +576,8 @@ instance HasJsonEncodingSpec LabelledTree where
       JsonLet
         '[ '("LabelledTree",
                JsonObject
-                 '[ '("label", JsonString)
-                  , '("children", JsonArray (JsonRef "LabelledTree"))
+                 '[ Required "label" JsonString
+                  , Required "children" (JsonArray (JsonRef "LabelledTree"))
                   ]
             )
          ]
@@ -554,5 +598,42 @@ instance HasJsonDecodingSpec LabelledTree where
     = do
       children <- traverse (fromJSONStructure . unRec) children_
       pure LabelledTree { label , children }
+
+
+data TestOptionality = TestOptionality
+  { toFoo :: Maybe Int
+  , toBar :: Maybe Int
+  , toBaz :: Maybe Int
+  , toQux :: Int
+  }
+  deriving (ToJSON, FromJSON) via (SpecJSON TestOptionality)
+  deriving (Show) via (ShowJ TestOptionality)
+  deriving stock (Eq)
+instance HasJsonEncodingSpec TestOptionality where
+  type EncodingSpec TestOptionality =
+    JsonObject
+      '[ Optional "foo" JsonInt
+       , Required "bar" (JsonNullable JsonInt)
+       , Optional "baz" (JsonNullable JsonInt)
+       , Required "qux" JsonInt
+       ]
+
+  toJSONStructure TestOptionality { toFoo , toBar , toBaz , toQux } =
+    (fmap (Field @"foo") toFoo,
+    (Field @"bar" toBar,
+    ((Just . Field @"baz") toBaz, -- when encoding, prefer explicit null for testing.
+    (Field @"qux" toQux,
+    ()))))
+instance HasJsonDecodingSpec TestOptionality where
+  type DecodingSpec TestOptionality = EncodingSpec TestOptionality
+
+  fromJSONStructure
+      (fmap (unField @"foo") -> toFoo,
+      (Field @"bar" toBar,
+      (join . fmap (unField @"baz") -> toBaz,
+      (Field @"qux" toQux,
+      ()))))
+    =
+      pure TestOptionality { toFoo , toBar , toBaz , toQux }
 
 
