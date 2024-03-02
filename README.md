@@ -44,10 +44,10 @@ data User = User
   deriving (ToJSON, FromJSON) via (SpecJSON User)
 instance HasJsonEncodingSpec User where
   type EncodingSpec User =
-    JsonObject
-      '[ '("name", JsonString)
-       , '("last-login", JsonDateTime)
-       ]
+    JsonObject '[
+      Required "name" JsonString,
+      Required "last-login" JsonDateTime
+    ]
   toJSONStructure user =
     (Field @"name" (name user),
     (Field @"last-login" (lastLogin user),

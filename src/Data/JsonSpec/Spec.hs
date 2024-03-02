@@ -15,6 +15,7 @@ module Data.JsonSpec.Spec (
   Field(..),
   Rec(..),
   JStruct,
+  FieldSpec(..),
 ) where
 
 
@@ -36,7 +37,7 @@ import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
   See 'JSONStructure' for how these map into Haskell representations.
 -}
 data Specification
-  = JsonObject [(Symbol, Specification)]
+  = JsonObject [FieldSpec]
     {-^
       An object with the specified properties, each having its own
       specification. This does not yet support optional properties,
@@ -61,9 +62,9 @@ data Specification
       E.g.:
 
       > type SpecWithNullableField =
-      >   JsonObject
-      >     '[ '("nullableProperty", JsonNullable JsonString)
-      >      ]
+      >   JsonObject '[
+      >     Required "nullableProperty" (JsonNullable JsonString)
+      >   ]
     -}
   | JsonEither Specification Specification
     {-^
@@ -78,24 +79,24 @@ data Specification
       >   type EncodingSpec MyType =
       >     JsonEither
       >       (
-      >         JsonObject
-      >           '[ '("tag", JsonTag "foo")
-      >            , '("content", JsonString)
-      >            ]
+      >         JsonObject '[
+      >           Required "tag" (JsonTag "foo"),
+      >           Required "content" JsonString
+      >         ]
       >       )
       >       (
       >         JsonEither
       >           (
-      >             JsonObject
-      >               '[ '("tag", JsonTag "bar")
-      >                , '("content", JsonInt)
-      >                ]
+      >             JsonObject '[
+      >               Required "tag" (JsonTag "bar"),
+      >               Required "content" JsonInt
+      >             ]
       >           )
       >           (
-      >             JsonObject
-      >               '[ '("tag", JsonTag "baz")
-      >                , '("content", JsonDateTime)
-      >                ]
+      >             JsonObject '[
+      >               Required "tag" (JsonTag "baz"),
+      >               Required "content" JsonDateTime
+      >             ]
       >           )
       >       )
     -}
@@ -115,36 +116,51 @@ data Specification
       this repetitive definition:
 
       > type Triangle =
-      >   JsonObject
-      >     '[ '("vertex1",
-      >          JsonObject '[('x', JsonInt), ('y', JsonInt), ('z', JsonInt)])
-      >      , '("vertex2",
-      >          JsonObject '[('x', JsonInt), ('y', JsonInt), ('z', JsonInt)])
-      >      , '("vertex3",
-      >          JsonObject '[('x', JsonInt), ('y', JsonInt), ('z', JsonInt)])
-      >      ]
+      >   JsonObject '[
+      >     Required "vertex1" (JsonObject '[
+      >       Required "x" JsonInt,
+      >       Required "y" JsonInt,
+      >       Required "z" JsonInt
+      >     ]),
+      >     Required "vertex2" (JsonObject '[
+      >       Required "x" JsonInt,
+      >       Required "y" JsonInt,
+      >       Required "z" JsonInt
+      >     ]),
+      >     Required "vertex3" (JsonObject '[
+      >       Required "x" JsonInt),
+      >       Required "y" JsonInt),
+      >       Required "z" JsonInt)
+      >     ])
+      >   ]
       
       Can be written more concisely as:
 
       > type Triangle =
-      >   JsonLet '[("Vertex",
-      >             JsonObject '[('x', JsonInt), ('y', JsonInt), ('z', JsonInt)])
-      >            ]
-      >     (JsonObject
-      >       '[ '("vertex1", JsonRef "Vertex")
-      >        , '("vertex2", JsonRef "Vertex")
-      >        , '("vertex3", JsonRef "Vertex")
+      >   JsonLet
+      >     '[
+      >       '("Vertex", JsonObject '[
+      >          ('x', JsonInt),
+      >          ('y', JsonInt),
+      >          ('z', JsonInt)
       >        ])
+      >      ]
+      >      (JsonObject '[
+      >        Required "vertex1" JsonRef "Vertex",
+      >        Required "vertex2" JsonRef "Vertex",
+      >        Required "vertex3" JsonRef "Vertex"
+      >      ])
 
       Another use is to define recursive types:
 
       > type LabelledTree =
-      >   JsonLet '[ '("LabelledTree",
-      >                JsonObject
-      >                  '[ '("label", JsonString)
-      >                   , '("children", JsonArray (JsonRef "LabelledTree"))
-      >                   ])
-      >            ]
+      >   JsonLet
+      >     '[
+      >       '("LabelledTree", JsonObject '[
+      >         Required "label", JsonString,
+      >         Required "children" (JsonArray (JsonRef "LabelledTree"))
+      >        ])
+      >      ]
       >     (JsonRef "LabelledTree")
     -}
   | JsonRef Symbol
@@ -152,6 +168,12 @@ data Specification
       A reference to a specification which has been defined in a surrounding
       'JsonLet'.
     -}
+
+
+{-| Specify a field in an object.  -}
+data FieldSpec
+  = Required Symbol Specification {-^ The field is required -}
+  | Optional Symbol Specification {-^ The field is optionsl -}
 
 
 {- |
@@ -210,9 +232,14 @@ type family
   :: Type
   where
     JStruct env (JsonObject '[]) = ()
-    JStruct env (JsonObject ( '(key, s) : more )) =
+    JStruct env (JsonObject ( Required key s : more )) =
       (
         Field key (JStruct env s),
+        JStruct env (JsonObject more)
+      )
+    JStruct env (JsonObject ( Optional key s : more )) =
+      (
+        Maybe (Field key (JStruct env s)),
         JStruct env (JsonObject more)
       )
     JStruct env JsonString = Text
@@ -282,7 +309,7 @@ data Tag (a :: Symbol) = Tag
 
 
 {-| Structural representation of an object field. -}
-newtype Field (key :: Symbol) t = Field t
+newtype Field (key :: Symbol) t = Field {unField :: t}
   deriving stock (Show, Eq)
 
 

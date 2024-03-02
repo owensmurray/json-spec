@@ -16,10 +16,10 @@
   >   deriving (ToJSON, FromJSON) via (SpecJSON User)
   > instance HasJsonEncodingSpec User where
   >   type EncodingSpec User =
-  >     JsonObject
-  >       '[ '("name", JsonString)
-  >        , '("last-login", JsonDateTime)
-  >        ]
+  >     JsonObject '[
+  >       Required "name" JsonString,
+  >       Required "last-login" JsonDateTime
+  >     ]
   >   toJSONStructure user =
   >     (Field @"name" (name user),
   >     (Field @"last-login" (lastLogin user),
@@ -78,6 +78,7 @@ module Data.JsonSpec (
   Rec(..),
   eitherDecode,
   StructureFromJSON,
+  FieldSpec(..)
 ) where
 
 
@@ -86,10 +87,10 @@ import Data.JsonSpec.Decode (HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), StructureFromJSON(reprParseJSON), eitherDecode)
 import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
   toJSONStructure), StructureToJSON(reprToJSON))
-import Data.JsonSpec.Spec (Field(Field), Rec(Rec, unRec),
-  Specification(JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt,
-  JsonLet, JsonNullable, JsonNum, JsonObject, JsonRef, JsonString,
-  JsonTag), Tag(Tag), JSONStructure)
+import Data.JsonSpec.Spec (Field(Field, unField), FieldSpec(Optional,
+  Required), Rec(Rec, unRec), Specification(JsonArray, JsonBool,
+  JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
+  JsonObject, JsonRef, JsonString, JsonTag), Tag(Tag), JSONStructure)
 import Prelude ((.), (<$>), (=<<))
 
 
