@@ -77,6 +77,7 @@ module Data.JsonSpec (
   JSONStructure,
   Rec(..),
   eitherDecode,
+  encode,
   StructureFromJSON,
   FieldSpec(..)
 ) where
@@ -86,11 +87,12 @@ import Data.Aeson (FromJSON(parseJSON), ToJSON(toJSON))
 import Data.JsonSpec.Decode (HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), StructureFromJSON(reprParseJSON), eitherDecode)
 import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
-  toJSONStructure), StructureToJSON(reprToJSON))
+  toJSONStructure), StructureToJSON(reprToJSON), encode)
 import Data.JsonSpec.Spec (Field(Field, unField), FieldSpec(Optional,
   Required), Rec(Rec, unRec), Specification(JsonArray, JsonBool,
   JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
-  JsonObject, JsonRef, JsonString, JsonTag), Tag(Tag), JSONStructure)
+  JsonObject, JsonRaw, JsonRef, JsonString, JsonTag), Tag(Tag),
+  JSONStructure)
 import Prelude ((.), (<$>), (=<<))
 
 
