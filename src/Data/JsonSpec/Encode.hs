@@ -25,7 +25,7 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
 import Prelude (Either(Left, Right), Functor(fmap), Maybe(Just, Nothing),
-  Monoid(mempty), (.), Bool, Int, maybe)
+  Monoid(mempty), (.), Bool, Int, id, maybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Set as Set
@@ -57,6 +57,8 @@ instance (HasJsonEncodingSpec a) => HasJsonEncodingSpec (Set a) where
 -}
 class StructureToJSON a where
   reprToJSON :: a -> Value
+instance StructureToJSON Value where
+  reprToJSON = id
 instance StructureToJSON () where
   reprToJSON () = A.object []
 instance StructureToJSON Bool where

@@ -19,6 +19,7 @@ module Data.JsonSpec.Spec (
 ) where
 
 
+import Data.Aeson (Value)
 import Data.Kind (Type)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
@@ -168,6 +169,8 @@ data Specification
       A reference to a specification which has been defined in a surrounding
       'JsonLet'.
     -}
+  | JsonRaw {-^ Some raw, uninterpreted JSON value -}
+
 
 
 {-| Specify a field in an object.  -}
@@ -255,6 +258,7 @@ type family
     JStruct env (JsonLet defs spec) =
       JStruct (Append defs env) spec
     JStruct env (JsonRef ref) = Lookup ref env
+    JStruct env JsonRaw = Value
 
 
 {-|

@@ -69,6 +69,8 @@ class HasJsonDecodingSpec a where
 -}
 class StructureFromJSON a where
   reprParseJSON :: Value -> Parser a
+instance StructureFromJSON Value where
+  reprParseJSON = pure
 instance StructureFromJSON Text where
   reprParseJSON = withText "string" pure
 instance StructureFromJSON Scientific where
