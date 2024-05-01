@@ -140,7 +140,7 @@ main =
           let
             actual :: Either String TestOptionality
             actual = A.eitherDecode "{\"bar\":null,\"qux\":1}"
-            
+
             expected :: Either String TestOptionality
             expected = Right obj
           in
@@ -150,7 +150,7 @@ main =
           let
             actual :: Either String TestOptionality
             actual = A.eitherDecode "{\"bar\":null,\"baz\":null,\"qux\":1}"
-            
+
             expected :: Either String TestOptionality
             expected = Right obj
           in
@@ -250,7 +250,6 @@ main =
             expected = "{\"children\":[{\"children\":[{\"children\":[],\"label\":\"child1\"},{\"children\":[],\"label\":\"child2\"}],\"label\":\"parent\"}],\"label\":\"grandparent\"}"
           in
             actual `shouldBe` expected
-
 
       describe "nullable" $ do
         it "encodes product" $

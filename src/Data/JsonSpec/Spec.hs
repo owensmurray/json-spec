@@ -31,7 +31,7 @@ import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 {-|
   Simple DSL for defining type level "specifications" for JSON
   data. Similar in spirit to (but not isomorphic with) JSON Schema.
-  
+
   Intended to be used at the type level using @-XDataKinds@
 
   See 'JSONStructure' for how these map into Haskell representations.
@@ -111,7 +111,7 @@ data Specification
     {-^
       A "let" expression. This is useful for giving names to types, which can
       then be used in the generated code.
-      
+
       This is also useful to shorten repetitive type definitions. For example,
       this repetitive definition:
 
@@ -133,7 +133,7 @@ data Specification
       >       Required "z" JsonInt)
       >     ])
       >   ]
-      
+
       Can be written more concisely as:
 
       > type Triangle =
@@ -290,7 +290,7 @@ type family
   >     JsonLet
   >       '[ '("Foo", JsonArray (JsonRef "Foo")) ]
   >       (JsonRef "Foo")
-  >   toJSONStructure (Foo fs) = 
+  >   toJSONStructure (Foo fs) =
   >     [ Rec (toJSONStructure f)
   >     | f <- fs
   >     ]
