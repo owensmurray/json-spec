@@ -11,12 +11,14 @@
 module Data.JsonSpec.Encode (
   HasJsonEncodingSpec(..),
   StructureToJSON(..),
+  encode,
 ) where
 
 
 import Data.Aeson (ToJSON(toJSON), Value)
 import Data.JsonSpec.Spec (Field(Field), Rec(unRec),
   Specification(JsonArray), JSONStructure, JStruct, Tag, sym)
+import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -117,5 +119,15 @@ instance (KnownSymbol key, StructureToJSON val, ToJSONObject more) => ToJSONObje
           (sym @key)
           (reprToJSON val)
           (toJSONObject more)
+
+
+{-|
+  Given a raw Haskell structure, directly encode it directly into an
+  aeson Value without having to go through any To/FromJSON instances.
+
+  See also: `Data.JsonSpec.eitherDecode`.
+-}
+encode :: StructureToJSON (JSONStructure spec) => Proxy spec -> JSONStructure spec -> Value
+encode Proxy = reprToJSON
 
 

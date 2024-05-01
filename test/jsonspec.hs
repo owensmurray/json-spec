@@ -22,7 +22,7 @@ import Data.JsonSpec (Field(Field, unField), FieldSpec(Optional,
   HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Rec(Rec, unRec),
   SpecJSON(SpecJSON), Specification(JsonArray, JsonBool, JsonDateTime,
   JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject,
-  JsonRef, JsonString, JsonTag), Tag(Tag), eitherDecode)
+  JsonRef, JsonString, JsonTag), Tag(Tag), eitherDecode, encode)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
@@ -281,10 +281,27 @@ main =
         in
           actual `shouldBe` expected
 
-      it "eitherDecode" $
-        let
-          actual
-            :: Either
+      describe "direct encoding/decoding" $ do
+        it "eitherDecode" $
+          let
+            actual
+              :: Either
+                   String
+                   (Field "foo" Text,
+                   (Maybe (Field "bar" Scientific),
+                   (Field "baz"
+                     (Field "foo" Text,
+                     (Field "bar" Int,
+                     ())),
+                   (Field "qux" (Maybe Int),
+                   (Field "qoo" Bool,
+                   ())))))
+            actual =
+              A.eitherDecode
+                "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null,\"qoo\":false}"
+                >>= eitherDecode (Proxy @(EncodingSpec TestObj))
+            expected
+              :: Either
                  String
                  (Field "foo" Text,
                  (Maybe (Field "bar" Scientific),
@@ -295,35 +312,45 @@ main =
                  (Field "qux" (Maybe Int),
                  (Field "qoo" Bool,
                  ())))))
-          actual =
-            A.eitherDecode
-              "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null,\"qoo\":false}"
-              >>= eitherDecode (Proxy @(EncodingSpec TestObj))
-          expected
-            :: Either
-               String
-               (Field "foo" Text,
-               (Maybe (Field "bar" Scientific),
-               (Field "baz"
-                 (Field "foo" Text,
-                 (Field "bar" Int,
-                 ())),
-               (Field "qux" (Maybe Int),
-               (Field "qoo" Bool,
-               ())))))
-          expected =
-            Right
-              (Field @"foo" "foo",
-              (Just (Field @"bar" 1.0),
-              (Field @"baz"
-                (Field @"foo" "foo2",
-                (Field @"bar" 0,
-                ())),
-              (Field @"qux" Nothing,
-              (Field @"qoo" False,
-              ())))))
-        in
-          actual `shouldBe` expected
+            expected =
+              Right
+                (Field @"foo" "foo",
+                (Just (Field @"bar" 1.0),
+                (Field @"baz"
+                  (Field @"foo" "foo2",
+                  (Field @"bar" 0,
+                  ())),
+                (Field @"qux" Nothing,
+                (Field @"qoo" False,
+                ())))))
+          in
+            actual `shouldBe` expected
+
+        it "encode" $
+          let
+            expected :: Maybe A.Value
+            expected =
+              A.decode "{\"bar\":1,\"baz\":{\"bar\":0,\"foo\":\"foo2\"},\"foo\":\"foo\",\"qux\":null,\"qoo\":false}"
+
+            actual :: Maybe A.Value
+            actual =
+              Just $
+                encode
+                  (Proxy @(EncodingSpec TestObj))
+                  (
+                    (Field @"foo" "foo",
+                    (Just (Field @"bar" 1.0),
+                    (Field @"baz"
+                      (Field @"foo" "foo2",
+                      (Field @"bar" 0,
+                      ())),
+                    (Field @"qux" Nothing,
+                    (Field @"qoo" False,
+                    ())))))
+                  )
+          in
+            actual `shouldBe` expected
+
 
 sampleTestObject :: TestObj
 sampleTestObject =
