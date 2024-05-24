@@ -389,7 +389,7 @@ main =
                   ())
           in
             actual `shouldBe` expected
-          
+
 
 sampleTestObject :: TestObj
 sampleTestObject =
