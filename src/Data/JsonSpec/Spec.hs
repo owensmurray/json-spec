@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -13,6 +14,7 @@ module Data.JsonSpec.Spec (
   sym,
   Tag(..),
   Field(..),
+  unField,
   Rec(..),
   JStruct,
   FieldSpec(..),
@@ -28,7 +30,9 @@ import Data.Scientific (Scientific)
 import Data.String (IsString(fromString))
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import GHC.Records (HasField(getField))
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import Prelude (($), Bool, Either, Eq, Int, Maybe, Show)
 
 
 {-|
@@ -201,6 +205,12 @@ type (::?) = Optional
   > (Field @key3 valueType,
   > ())))
 
+  Note! "Object structures" of this type have the appropriate 'HasField'
+  instances, which allows you to use -XOverloadedRecordDot to extract
+  values as an alternative to pattern matching the whole tuple structure
+  when building your 'HasJsonDecodingSpec' instances. See @TestHasField@
+  in the tests for an example
+
   Arrays, booleans, numbers, and strings are just Lists, 'Bool's,
   'Scientific's, and 'Text's respectively.
 
@@ -323,8 +333,16 @@ data Tag (a :: Symbol) = Tag
 
 
 {-| Structural representation of an object field. -}
-newtype Field (key :: Symbol) t = Field {unField :: t}
+newtype Field (key :: Symbol) t = Field t
   deriving stock (Show, Eq)
+instance {-# overlappable #-} (HasField k more v) => HasField k (Field notIt x, more) v where
+  getField (_, more) = getField @k @_ @v more
+instance HasField k (Field k v, more) v where
+  getField (Field v, _) = v
+
+
+unField :: Field key t -> t
+unField (Field t) = t
 
 
 {- |

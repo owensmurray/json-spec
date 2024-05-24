@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -11,6 +12,7 @@
 {-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_GHC -Wwarn #-} {- Because of GHC-69797 -}
+{- But re-enable the errors we most care about -}
 {-# OPTIONS_GHC -Werror=missing-import-lists #-}
 
 module Main (main) where
@@ -18,21 +20,22 @@ module Main (main) where
 import Control.Monad (join)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString.Lazy (ByteString)
-import Data.JsonSpec (Field(Field, unField), FieldSpec(Optional,
+import Data.JsonSpec (Field(Field), FieldSpec(Optional,
   Required), HasJsonDecodingSpec(DecodingSpec, fromJSONStructure),
   HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Rec(Rec, unRec),
   SpecJSON(SpecJSON), Specification(JsonArray, JsonBool, JsonDateTime,
   JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject,
   JsonRaw, JsonRef, JsonString, JsonTag), Tag(Tag), (:::), (::?),
-  eitherDecode, encode)
+  eitherDecode, encode, unField)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime(UTCTime))
 import OM.Show (ShowJ(ShowJ))
-import Prelude (Applicative(pure), Bool(False, True), Either(Left,
-  Right), Enum(toEnum), Functor(fmap), Maybe(Just, Nothing), Monad((>>=)),
-  Traversable(traverse), ($), (.), Eq, IO, Int, Show, String, realToFrac)
+import Prelude (Applicative(pure), Bool(False, True), Either(Left, Right),
+  Enum(toEnum), Functor(fmap), Maybe(Just, Nothing), Monad((>>=)),
+  Num(negate), Traversable(traverse), ($), (.), Eq, IO, Int, Show,
+  String, realToFrac)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import qualified Data.Aeson as A
 
@@ -399,6 +402,35 @@ main =
           in
             actual `shouldBe` expected
 
+      it "HasField" $
+        let
+          expected :: Maybe TestHasField
+          expected =
+            Just
+              TestHasField
+                { thfFoo = "foo"
+                , thfBar = 10
+                , thfBaz =
+                    TestSubObj
+                      { foo2 = "bar"
+                      , bar2 = negate 10
+                      }
+                }
+
+          actual :: Maybe TestHasField
+          actual =
+            A.decode
+              "{\
+              \  \"foo\": \"foo\",\
+              \  \"bar\": 10,\
+              \  \"baz\": {\
+              \    \"a_string\": \"bar\",\
+              \    \"an_int\": -10\
+              \  }\
+              \}"
+        in
+          actual `shouldBe` expected
+
 
 sampleTestObject :: TestObj
 sampleTestObject =
@@ -709,5 +741,36 @@ instance HasJsonDecodingSpec TestOptionality where
       ()))))
     =
       pure TestOptionality { toFoo , toBar , toBaz , toQux }
+
+
+data TestHasField = TestHasField
+  { thfFoo :: Text
+  , thfBar :: Int
+  , thfBaz :: TestSubObj
+  }
+  deriving stock (Show, Eq)
+  deriving (FromJSON) via (SpecJSON TestHasField)
+instance HasJsonDecodingSpec TestHasField where
+  type DecodingSpec TestHasField =
+    JsonObject
+      '[ "foo" ::: JsonString
+       , "bar" ::: JsonInt
+       , "baz" ::: JsonObject
+                    '[ "a_string" ::: JsonString
+                     ,   "an_int" ::: JsonInt
+                     ]
+       ]
+  fromJSONStructure val =
+    pure
+      TestHasField
+        { thfFoo = val.foo
+        , thfBar = val.bar
+        , thfBaz =
+            TestSubObj
+              { foo2 = val.baz.a_string
+              , bar2 = val.baz.an_int
+              }
+
+        }
 
 
