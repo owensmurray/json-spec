@@ -16,6 +16,8 @@ module Data.JsonSpec.Spec (
   Rec(..),
   JStruct,
   FieldSpec(..),
+  (:::),
+  (::?),
 ) where
 
 
@@ -177,6 +179,14 @@ data Specification
 data FieldSpec
   = Required Symbol Specification {-^ The field is required -}
   | Optional Symbol Specification {-^ The field is optionsl -}
+
+
+{-| Alias for 'Required'. -}
+type (:::) = Required
+
+
+{-| Alias for 'Optional'. -}
+type (::?) = Optional
 
 
 {- |

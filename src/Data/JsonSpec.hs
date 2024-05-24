@@ -79,7 +79,9 @@ module Data.JsonSpec (
   eitherDecode,
   encode,
   StructureFromJSON,
-  FieldSpec(..)
+  FieldSpec(..),
+  (:::),
+  (::?),
 ) where
 
 
@@ -91,8 +93,8 @@ import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
 import Data.JsonSpec.Spec (Field(Field, unField), FieldSpec(Optional,
   Required), Rec(Rec, unRec), Specification(JsonArray, JsonBool,
   JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
-  JsonObject, JsonRaw, JsonRef, JsonString, JsonTag), Tag(Tag),
-  JSONStructure)
+  JsonObject, JsonRaw, JsonRef, JsonString, JsonTag), Tag(Tag), (:::),
+  (::?), JSONStructure)
 import Prelude ((.), (<$>), (=<<))
 
 

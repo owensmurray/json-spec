@@ -11,19 +11,28 @@
 {-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_GHC -Wwarn #-} {- Because of GHC-69797 -}
+{-# OPTIONS_GHC -Werror=missing-import-lists #-}
 
 module Main (main) where
 
 import Control.Monad (join)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString.Lazy (ByteString)
-import Data.JsonSpec 
+import Data.JsonSpec (Field(Field, unField), FieldSpec(Optional,
+  Required), HasJsonDecodingSpec(DecodingSpec, fromJSONStructure),
+  HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Rec(Rec, unRec),
+  SpecJSON(SpecJSON), Specification(JsonArray, JsonBool, JsonDateTime,
+  JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject,
+  JsonRaw, JsonRef, JsonString, JsonTag), Tag(Tag), (:::), (::?),
+  eitherDecode, encode)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime(UTCTime))
 import OM.Show (ShowJ(ShowJ))
-import Prelude 
+import Prelude (Applicative(pure), Bool(False, True), Either(Left,
+  Right), Enum(toEnum), Functor(fmap), Maybe(Just, Nothing), Monad((>>=)),
+  Traversable(traverse), ($), (.), Eq, IO, Int, Show, String, realToFrac)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import qualified Data.Aeson as A
 
@@ -364,7 +373,7 @@ main =
               A.eitherDecode
                 "{ \"foo\": { \"bar\": \"barval\", \"baz\": [ \"qux\", 1, false ] } }"
               >>=
-                eitherDecode (Proxy @( JsonObject '[ Required "foo" JsonRaw ]))
+                eitherDecode (Proxy @( JsonObject '[ "foo" ::: JsonRaw ]))
           in
             actual `shouldBe` expected
         it "encodes" $
@@ -677,7 +686,7 @@ data TestOptionality = TestOptionality
 instance HasJsonEncodingSpec TestOptionality where
   type EncodingSpec TestOptionality =
     JsonObject
-      '[ Optional "foo" JsonInt
+      '[ "foo" ::? JsonInt
        , Required "bar" (JsonNullable JsonInt)
        , Optional "baz" (JsonNullable JsonInt)
        , Required "qux" JsonInt
