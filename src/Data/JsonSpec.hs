@@ -74,6 +74,7 @@ module Data.JsonSpec (
   SpecJSON(..),
   Tag(..),
   Field(..),
+  unField,
   JSONStructure,
   Rec(..),
   eitherDecode,
@@ -90,11 +91,11 @@ import Data.JsonSpec.Decode (HasJsonDecodingSpec(DecodingSpec,
   fromJSONStructure), StructureFromJSON(reprParseJSON), eitherDecode)
 import Data.JsonSpec.Encode (HasJsonEncodingSpec(EncodingSpec,
   toJSONStructure), StructureToJSON(reprToJSON), encode)
-import Data.JsonSpec.Spec (Field(Field, unField), FieldSpec(Optional,
-  Required), Rec(Rec, unRec), Specification(JsonArray, JsonBool,
-  JsonDateTime, JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum,
-  JsonObject, JsonRaw, JsonRef, JsonString, JsonTag), Tag(Tag), (:::),
-  (::?), JSONStructure)
+import Data.JsonSpec.Spec (Field(Field), FieldSpec(Optional, Required),
+  Rec(Rec, unRec), Specification(JsonArray, JsonBool, JsonDateTime,
+  JsonEither, JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject,
+  JsonRaw, JsonRef, JsonString, JsonTag), Tag(Tag), (:::), (::?),
+  JSONStructure, unField)
 import Prelude ((.), (<$>), (=<<))
 
 
