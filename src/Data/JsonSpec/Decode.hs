@@ -16,18 +16,23 @@ module Data.JsonSpec.Decode (
 
 
 import Control.Applicative (Alternative((<|>)))
-import Data.Aeson.Types (FromJSON(parseJSON), Value(Null, Object),
-  Parser, parseEither, withArray, withObject, withScientific, withText)
-import Data.JsonSpec.Spec (Field(Field), Rec(Rec), Tag(Tag),
-  JSONStructure, JStruct, Specification, sym)
+import Data.Aeson.Types
+  ( FromJSON(parseJSON), Value(Null, Object), Parser, parseEither, withArray
+  , withObject, withScientific, withText
+  )
+import Data.JsonSpec.Spec
+  ( Field(Field), Ref(Ref), Tag(Tag), JSONStructure, JStruct, Specification, sym
+  )
 import Data.Proxy (Proxy)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
-import Prelude (Applicative(pure), Either(Left, Right), Eq((==)),
-  Functor(fmap), Maybe(Just, Nothing), MonadFail(fail), Semigroup((<>)),
-  Traversable(traverse), ($), (.), (<$>), Bool, Int, String)
+import Prelude
+  ( Applicative(pure), Either(Left, Right), Eq((==)), Functor(fmap)
+  , Maybe(Just, Nothing), MonadFail(fail), Semigroup((<>))
+  , Traversable(traverse), ($), (.), (<$>), Bool, Int, String
+  )
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Vector as Vector
 
@@ -123,12 +128,12 @@ instance (StructureFromJSON a) => StructureFromJSON (Maybe a) where
       Null -> pure Nothing
       _ -> Just <$> reprParseJSON val
 instance
-    (StructureFromJSON (JStruct ('(name, Rec env name spec) : env) spec))
+    (StructureFromJSON (JStruct env spec))
   =>
-    StructureFromJSON (Rec env name spec)
+    StructureFromJSON (Ref env spec)
   where
   reprParseJSON val =
-    Rec <$> reprParseJSON val
+    Ref <$> reprParseJSON val
 
 
 {-|

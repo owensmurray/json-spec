@@ -15,7 +15,7 @@ module Data.JsonSpec.Spec (
   Tag(..),
   Field(..),
   unField,
-  Rec(..),
+  Ref(..),
   JStruct,
   FieldSpec(..),
   (:::),
@@ -178,7 +178,6 @@ data Specification
   | JsonRaw {-^ Some raw, uninterpreted JSON value -}
 
 
-
 {-| Specify a field in an object.  -}
 data FieldSpec
   = Required Symbol Specification {-^ The field is required -}
@@ -222,35 +221,19 @@ type family JSONStructure (spec :: Specification) where
   JSONStructure spec = JStruct '[] spec
 
 
-type family
-  Append
-    (defs :: [(Symbol, Specification)])
-    (env :: [(Symbol, Type)])
-  :: [(Symbol, Type)]
-  where
-    Append '[] env = env
-    Append ( '(name, spec) : defs ) env =
-      '( name
-       , JStruct
-           ( '(name, Rec env name spec) : env)
-           spec
-       )
-      : Append defs env
+type family Lookup env k where
+  Lookup ('(k, v) : more) k = v
+  Lookup (_ : more) k = Lookup more k
 
 
-type family
-  Lookup
-    (key :: Symbol)
-    (env :: [(Symbol, Type)])
-  :: Type
-  where
-    Lookup key ( '(key, spec) : more ) = spec
-    Lookup key ( _ : more ) = Lookup key more
+type family PushAll (a :: [k]) (b :: [k]) :: [k] where
+  PushAll '[] b = b
+  PushAll (e : more) b = PushAll more (e : b)
 
 
 type family
   JStruct
-    (env :: [(Symbol, Type)])
+    (env :: [(Symbol, Specification)])
     (spec :: Specification)
   :: Type
   where
@@ -276,17 +259,20 @@ type family
     JStruct env JsonDateTime = UTCTime
     JStruct env (JsonNullable spec) = Maybe (JStruct env spec)
     JStruct env (JsonLet defs spec) =
-      JStruct (Append defs env) spec
-    JStruct env (JsonRef ref) = Lookup ref env
+      JStruct (PushAll defs env) spec
+    JStruct env (JsonRef ref) = Ref env (Lookup env ref)
     JStruct env JsonRaw = Value
 
 
 {-|
-  This allows for recursive specifications.
+  This is the "Haskell structure" type of 'JsonRef' references.
 
-  Since the specification is at the
-  type level, and type level haskell is strict, specifying a recursive
-  definition the "naive" way would cause an infinitely sized type.
+  The main reason why we need this is because of recursion, as explained
+  below:
+
+  Since the specification is at the type level, and type level haskell
+  is strict, specifying a recursive definition the "naive" way would
+  cause an infinitely sized type.
 
   For example this won't work:
 
@@ -295,16 +281,19 @@ type family
   >   type EncodingSpec Foo = JsonArray (EncodingSpec Foo)
   >   toJSONStructure = ... can't be written
 
+  ... because @EncodingSpec Foo@ would expand strictly into an array of
+  @EncodingSpec Foo@, which would expand strictly... to infinity.
+
   Using `JsonLet` prevents the specification type from being infinitely
   sized, but what about "structure" type which holds real values
   corresponding to the spec? The structure type has to have some way to
   reference itself or else it too would be infinitely sized.
 
-  In order to "reference itself" the structure type has to go
-  through a newtype somewhere along the way, and that's what this
-  type is for. Whenever the structure type for your spec requires a
-  self-reference, it will require you to wrap the recursed upon values
-  in this type.
+  In order to "reference itself" the structure type has to go through
+  a newtype somewhere along the way, and that's what this type is
+  for. Whenever you use a 'JsonRef' in the spec, the corresponding
+  structural type will have a 'Ref' newtype wrapper around the
+  "dereferenced" structure type.
 
   For example:
 
@@ -315,17 +304,22 @@ type family
   >       '[ '("Foo", JsonArray (JsonRef "Foo")) ]
   >       (JsonRef "Foo")
   >   toJSONStructure (Foo fs) =
-  >     [ Rec (toJSONStructure f)
-  >     | f <- fs
-  >     ]
--}
-newtype Rec env name spec = Rec
-  { unRec ::
-      JStruct
-        ( '(name, Rec env name spec) : env)
-        spec
-  }
+  >     Ref [ toJSONStructure <$> fs ]
 
+  Strictly speaking, we wouldn't /necessarily/ have to translate every
+  'JsonRef' into a 'Ref'. In principal we could get away with inserting a
+  'Ref' somewhere in every mutually recursive cycle. But the type level
+  programming to figure that out a) probably wouldn't do any favors to
+  compilation times, b) is beyond what I'm willing to attempted right
+  now, and c) requires some kind of deterministic and stable choice
+  about where to insert the 'Ref' (which I'm not even certain exists)
+  lest arbitrary 'HasJsonEncodingSpec' or 'HasJsonDecodingSpec' instances
+  break when the members of the recursive cycle change, causing a new
+  choice about where to place the 'Ref'.
+-}
+newtype Ref env spec = Ref
+  { unRef :: JStruct env spec
+  }
 
 
 {-| Structural representation of 'JsonTag'. (I.e. a constant string value.) -}
