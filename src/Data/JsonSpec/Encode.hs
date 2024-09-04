@@ -16,16 +16,20 @@ module Data.JsonSpec.Encode (
 
 
 import Data.Aeson (ToJSON(toJSON), Value)
-import Data.JsonSpec.Spec (Field(Field), Rec(unRec),
-  Specification(JsonArray), JSONStructure, JStruct, Tag, sym)
+import Data.JsonSpec.Spec
+  ( Field(Field), Rec(unRec), Specification(JsonArray), JSONStructure, JStruct
+  , Tag, sym
+  )
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.TypeLits (KnownSymbol)
-import Prelude (Either(Left, Right), Functor(fmap), Maybe(Just, Nothing),
-  Monoid(mempty), (.), Bool, Int, id, maybe)
+import Prelude
+  ( Either(Left, Right), Functor(fmap), Maybe(Just, Nothing), Monoid(mempty)
+  , (.), Bool, Int, id, maybe
+  )
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Set as Set

@@ -178,7 +178,6 @@ data Specification
   | JsonRaw {-^ Some raw, uninterpreted JSON value -}
 
 
-
 {-| Specify a field in an object.  -}
 data FieldSpec
   = Required Symbol Specification {-^ The field is required -}
@@ -223,10 +222,10 @@ type family JSONStructure (spec :: Specification) where
 
 
 type family
-  Append
-    (defs :: [(Symbol, Specification)])
-    (env :: [(Symbol, Type)])
-  :: [(Symbol, Type)]
+    Append
+      (defs :: [(Symbol, Specification)])
+      (env :: [(Symbol, Type)])
+    :: [(Symbol, Type)]
   where
     Append '[] env = env
     Append ( '(name, spec) : defs ) env =
@@ -239,10 +238,10 @@ type family
 
 
 type family
-  Lookup
-    (key :: Symbol)
-    (env :: [(Symbol, Type)])
-  :: Type
+    Lookup
+      (key :: Symbol)
+      (env :: [(Symbol, Type)])
+    :: Type
   where
     Lookup key ( '(key, spec) : more ) = spec
     Lookup key ( _ : more ) = Lookup key more
@@ -325,7 +324,6 @@ newtype Rec env name spec = Rec
         ( '(name, Rec env name spec) : env)
         spec
   }
-
 
 
 {-| Structural representation of 'JsonTag'. (I.e. a constant string value.) -}
