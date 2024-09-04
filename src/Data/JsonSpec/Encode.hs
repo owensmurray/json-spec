@@ -17,7 +17,7 @@ module Data.JsonSpec.Encode (
 
 import Data.Aeson (ToJSON(toJSON), Value)
 import Data.JsonSpec.Spec
-  ( Field(Field), Rec(unRec), Specification(JsonArray), JSONStructure, JStruct
+  ( Field(Field), Ref(unRef), Specification(JsonArray), JSONStructure, JStruct
   , Tag, sym
   )
 import Data.Proxy (Proxy(Proxy))
@@ -88,11 +88,11 @@ instance StructureToJSON UTCTime where
 instance (StructureToJSON a) => StructureToJSON (Maybe a) where
   reprToJSON = maybe A.Null reprToJSON
 instance
-    (StructureToJSON (JStruct ('(name, Rec env name spec) : env) spec))
+    (StructureToJSON (JStruct env spec))
   =>
-    StructureToJSON (Rec env name spec)
+    StructureToJSON (Ref env spec)
   where
-    reprToJSON = reprToJSON . unRec
+    reprToJSON = reprToJSON . unRef
 
 
 {- |

@@ -76,7 +76,7 @@ module Data.JsonSpec (
   Field(..),
   unField,
   JSONStructure,
-  Rec(..),
+  Ref(..),
   eitherDecode,
   encode,
   StructureFromJSON,
@@ -96,7 +96,7 @@ import Data.JsonSpec.Encode
   , StructureToJSON(reprToJSON), encode
   )
 import Data.JsonSpec.Spec
-  ( Field(Field), FieldSpec(Optional, Required), Rec(Rec, unRec)
+  ( Field(Field), FieldSpec(Optional, Required), Ref(Ref, unRef)
   , Specification
     ( JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt, JsonLet
     , JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef, JsonString, JsonTag

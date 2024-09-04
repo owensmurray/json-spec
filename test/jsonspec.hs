@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedRecordDot #-}
@@ -28,7 +30,7 @@ import Data.ByteString.Lazy (ByteString)
 import Data.JsonSpec
   ( Field(Field), FieldSpec(Optional, Required)
   , HasJsonDecodingSpec(DecodingSpec, fromJSONStructure)
-  , HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Rec(Rec, unRec)
+  , HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Ref(Ref)
   , SpecJSON(SpecJSON)
   , Specification
     ( JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt, JsonLet
@@ -441,6 +443,87 @@ main =
         in
           actual `shouldBe` expected
 
+      describe "mutual recursion" $ do
+        describe "style1" $ do
+          it "encodes" $
+            let
+              expected :: ByteString
+              expected = "[[[],[]]]"
+
+              actual :: ByteString
+              actual = A.encode (MRec1 [MRec2 [MRec1 [], MRec1 []]])
+            in
+              actual `shouldBe` expected
+
+          it "decoces" $
+            let
+              expected :: Maybe MRec1
+              expected = Just (MRec1 [MRec2 [MRec1 [], MRec1 []]])
+
+              actual :: Maybe MRec1
+              actual = A.decode "[[[],[]]]"
+            in
+              actual `shouldBe` expected
+
+        describe "style2" $ do
+          it "encodes" $
+            let
+              expected :: ByteString
+              expected =
+                "{\"foo\":{\"bar\":{\"foo\":{\"bar\":{\"foo\":null}}}}}"
+
+              actual =
+                A.encode 
+                  MRec3
+                    { foo =
+                        Just 
+                          MRec4
+                            { bar =
+                                MRec3
+                                  { foo =
+                                      Just 
+                                        MRec4
+                                          { bar =
+                                              MRec3
+                                                { foo = Nothing
+                                                }
+                                          }
+                                  }
+                            }
+                    }
+            in
+              actual `shouldBe` expected
+
+          it "decodes" $
+            let
+              expected :: Maybe MRec3
+              expected =
+                Just
+                  MRec3
+                    { foo =
+                        Just 
+                          MRec4
+                            { bar =
+                                MRec3
+                                  { foo =
+                                      Just 
+                                        MRec4
+                                          { bar =
+                                              MRec3
+                                                { foo = Nothing
+                                                }
+                                          }
+                                  }
+                            }
+                    }
+
+              actual :: Maybe MRec3
+              actual =
+                A.decode
+                  "{\"foo\":{\"bar\":{\"foo\":{\"bar\":{\"foo\":null}}}}}"
+            in
+              actual `shouldBe` expected
+
 
 sampleTestObject :: TestObj
 sampleTestObject =
@@ -663,16 +746,16 @@ instance HasJsonEncodingSpec Triangle where
          , Required "vertex3" (JsonRef "Vertex")
          ])
   toJSONStructure Triangle {vertex1, vertex2, vertex3} =
-    (Field @"vertex1" (toJSONStructure vertex1),
-    (Field @"vertex2" (toJSONStructure vertex2),
-    (Field @"vertex3" (toJSONStructure vertex3),
+    (Field @"vertex1" (Ref $ toJSONStructure vertex1),
+    (Field @"vertex2" (Ref $ toJSONStructure vertex2),
+    (Field @"vertex3" (Ref $ toJSONStructure vertex3),
     ())))
 instance HasJsonDecodingSpec Triangle where
   type DecodingSpec Triangle = EncodingSpec Triangle
   fromJSONStructure
-      (Field @"vertex1" rawVertex1,
-      (Field @"vertex2" rawVertex2,
-      (Field @"vertex3" rawVertex3,
+      (Field @"vertex1" (Ref rawVertex1),
+      (Field @"vertex2" (Ref rawVertex2),
+      (Field @"vertex3" (Ref rawVertex3),
       ())))
     = do
       vertex1 <- fromJSONStructure rawVertex1
@@ -699,20 +782,24 @@ instance HasJsonEncodingSpec LabelledTree where
          ]
         (JsonRef "LabelledTree")
   toJSONStructure LabelledTree {label , children } =
-    (Field @"label" label,
-    (Field @"children"
-      [ Rec (toJSONStructure child)
-      | child <- children
-      ],
-    ()))
+    Ref
+      (Field @"label" label,
+      (Field @"children"
+        [ toJSONStructure child
+        | child <- children
+        ],
+      ()))
 instance HasJsonDecodingSpec LabelledTree where
   type DecodingSpec LabelledTree = EncodingSpec LabelledTree
   fromJSONStructure
-      (Field @"label" label,
-      (Field @"children" children_,
-      ()))
+      (
+        Ref
+          (Field @"label" label,
+          (Field @"children" children_,
+          ()))
+      )
     = do
-      children <- traverse (fromJSONStructure . unRec) children_
+      children <- traverse fromJSONStructure children_
       pure LabelledTree { label , children }
 
 
@@ -783,4 +870,97 @@ instance HasJsonDecodingSpec TestHasField where
 
         }
 
+
+{- Mutually recursive test.  -}
+{- ========================================================================== -}
+
+newtype MRec1 = MRec1 [MRec2]
+  deriving (ToJSON, FromJSON) via (SpecJSON MRec1)
+  deriving stock (Show, Eq)
+newtype MRec2 = MRec2 [MRec1]
+  deriving stock (Show, Eq)
+instance HasJsonEncodingSpec MRec1 where
+  type EncodingSpec MRec1 =
+    JsonLet
+     '[ '("one", JsonArray (JsonRef "two"))
+      , '("two", JsonArray (JsonRef "one"))
+      ]
+      (JsonRef "one")
+
+  toJSONStructure (MRec1 m2s) =
+    Ref
+      [ Ref (fmap toJSONStructure m1s)
+      | MRec2 m1s <- m2s
+      ]
+instance HasJsonDecodingSpec MRec1 where
+  type DecodingSpec MRec1 = EncodingSpec MRec1
+
+  fromJSONStructure (Ref m2s_) = do
+    m2s <-
+      traverse
+        (\(Ref m1s_) -> do
+          m1s <- traverse fromJSONStructure m1s_
+          pure (MRec2 m1s)
+        )
+        m2s_
+    pure (MRec1 m2s)
+
+
+{- Another mutually recursive test. -}
+{- ========================================================================== -}
+
+type SharedRecSpecs =
+  '[ '( "three"
+      , JsonObject
+         '[ "foo" ::: JsonNullable (JsonRef "four")
+          ]
+      )
+   , '( "four"
+      , JsonObject
+         '[ "bar" ::: JsonRef "three"
+          ]
+      )
+   ]
+
+
+newtype MRec3 = MRec3
+  { foo :: Maybe MRec4
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON MRec3)
+instance HasJsonEncodingSpec MRec3 where
+  type EncodingSpec MRec3 =
+    JsonLet SharedRecSpecs (JsonRef "three")
+
+  toJSONStructure MRec3 { foo } =
+    Ref
+      (Field @"foo" (fmap toJSONStructure foo),
+      ())
+instance HasJsonDecodingSpec MRec3 where
+  type DecodingSpec MRec3 = EncodingSpec MRec3
+  fromJSONStructure ( Ref (Field @"foo" rawFoo, ()))
+    = do
+      foo <- traverse fromJSONStructure rawFoo
+      pure MRec3 { foo }
+
+
+newtype MRec4 = MRec4
+  { bar :: MRec3
+  }
+  deriving stock (Show, Eq)
+instance HasJsonEncodingSpec MRec4 where
+  type EncodingSpec MRec4 =
+    JsonLet SharedRecSpecs (JsonRef "four")
+  toJSONStructure MRec4 { bar } = 
+    Ref
+      (Field @"bar" (toJSONStructure bar),
+      ())
+instance HasJsonDecodingSpec MRec4 where
+  type DecodingSpec MRec4 = EncodingSpec MRec4
+  fromJSONStructure ( Ref (Field @"bar" rawbar, ()))
+    = do
+      bar <- fromJSONStructure rawbar
+      pure MRec4 { bar }
+
+{- ========================================================================== -}
 

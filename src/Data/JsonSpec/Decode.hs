@@ -21,7 +21,7 @@ import Data.Aeson.Types
   , withObject, withScientific, withText
   )
 import Data.JsonSpec.Spec
-  ( Field(Field), Rec(Rec), Tag(Tag), JSONStructure, JStruct, Specification, sym
+  ( Field(Field), Ref(Ref), Tag(Tag), JSONStructure, JStruct, Specification, sym
   )
 import Data.Proxy (Proxy)
 import Data.Scientific (Scientific)
@@ -128,12 +128,12 @@ instance (StructureFromJSON a) => StructureFromJSON (Maybe a) where
       Null -> pure Nothing
       _ -> Just <$> reprParseJSON val
 instance
-    (StructureFromJSON (JStruct ('(name, Rec env name spec) : env) spec))
+    (StructureFromJSON (JStruct env spec))
   =>
-    StructureFromJSON (Rec env name spec)
+    StructureFromJSON (Ref env spec)
   where
   reprParseJSON val =
-    Rec <$> reprParseJSON val
+    Ref <$> reprParseJSON val
 
 
 {-|
