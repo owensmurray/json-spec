@@ -222,19 +222,19 @@ type family JSONStructure (spec :: Specification) where
 
 
 type family
-    Append
+    PushAll
       (defs :: [(Symbol, Specification)])
       (env :: [(Symbol, Type)])
     :: [(Symbol, Type)]
   where
-    Append '[] env = env
-    Append ( '(name, spec) : defs ) env =
+    PushAll '[] env = env
+    PushAll ( '(name, spec) : defs ) env =
       '( name
        , JStruct
            ( '(name, Rec env name spec) : env)
            spec
        )
-      : Append defs env
+      : PushAll defs env
 
 
 type family
@@ -275,7 +275,7 @@ type family
     JStruct env JsonDateTime = UTCTime
     JStruct env (JsonNullable spec) = Maybe (JStruct env spec)
     JStruct env (JsonLet defs spec) =
-      JStruct (Append defs env) spec
+      JStruct (PushAll defs env) spec
     JStruct env (JsonRef ref) = Lookup ref env
     JStruct env JsonRaw = Value
 
