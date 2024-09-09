@@ -68,21 +68,34 @@
 
 -}
 module Data.JsonSpec (
+  -- * Writing specifications
   Specification(..),
+  (:::),
+  (::?),
+  FieldSpec(..),
+
+  -- * Encoding/decoding via a Specification
   HasJsonEncodingSpec(..),
   HasJsonDecodingSpec(..),
   SpecJSON(..),
   Tag(..),
   Field(..),
   unField,
-  JSONStructure,
   Ref(..),
+
+  -- * Direct encoding/decoding
   eitherDecode,
   encode,
+
+  -- * Other stuff
+  {-|
+    The items in this section are mainly exported because once in a
+    while you might need to include them in a type signature, but they
+    are not intended to be used directly.
+  -}
+  JSONStructure,
   StructureFromJSON,
-  FieldSpec(..),
-  (:::),
-  (::?),
+  StructureToJSON,
 ) where
 
 

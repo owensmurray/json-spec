@@ -285,7 +285,7 @@ type family
   @EncodingSpec Foo@, which would expand strictly... to infinity.
 
   Using `JsonLet` prevents the specification type from being infinitely
-  sized, but what about "structure" type which holds real values
+  sized, but what about the "structure" type which holds real values
   corresponding to the spec? The structure type has to have some way to
   reference itself or else it too would be infinitely sized.
 
