@@ -80,6 +80,7 @@ module Data.JsonSpec (
   eitherDecode,
   encode,
   StructureFromJSON,
+  StructureToJSON,
   FieldSpec(..),
   (:::),
   (::?),
