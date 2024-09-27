@@ -153,9 +153,9 @@ data Specification
       >        ])
       >      ]
       >      (JsonObject '[
-      >        Required "vertex1" JsonRef "Vertex",
-      >        Required "vertex2" JsonRef "Vertex",
-      >        Required "vertex3" JsonRef "Vertex"
+      >        "vertex1" ::: JsonRef "Vertex",
+      >        "vertex2" ::: JsonRef "Vertex",
+      >        "vertex3" ::: JsonRef "Vertex"
       >      ])
 
       Another use is to define recursive types:
@@ -164,8 +164,8 @@ data Specification
       >   JsonLet
       >     '[
       >       '("LabelledTree", JsonObject '[
-      >         Required "label", JsonString,
-      >         Required "children" (JsonArray (JsonRef "LabelledTree"))
+      >         "label" ::: JsonString,
+      >         "children" ::: JsonArray (JsonRef "LabelledTree")
       >        ])
       >      ]
       >     (JsonRef "LabelledTree")

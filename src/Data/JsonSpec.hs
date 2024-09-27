@@ -42,7 +42,7 @@
   Historically, the trade-off has been:
 
   1. Use Generic instances, and therefore your API is brittle. Changes
-     to Deeply nested object might unexpectedly change (and break) your
+     to a deeply nested object might unexpectedly change (and break) your
      API. You must structure your Haskell types exactly as they are
      rendered into JSON, which may not always be "natural" and easy to
      work with. In exchange, you get the ability to auto-derive matching
