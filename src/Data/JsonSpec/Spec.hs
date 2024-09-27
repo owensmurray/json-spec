@@ -153,9 +153,9 @@ data Specification
       >        ])
       >      ]
       >      (JsonObject '[
-      >        Required "vertex1" JsonRef "Vertex",
-      >        Required "vertex2" JsonRef "Vertex",
-      >        Required "vertex3" JsonRef "Vertex"
+      >        "vertex1" ::: JsonRef "Vertex",
+      >        "vertex2" ::: JsonRef "Vertex",
+      >        "vertex3" ::: JsonRef "Vertex"
       >      ])
 
       Another use is to define recursive types:
@@ -164,8 +164,8 @@ data Specification
       >   JsonLet
       >     '[
       >       '("LabelledTree", JsonObject '[
-      >         Required "label", JsonString,
-      >         Required "children" (JsonArray (JsonRef "LabelledTree"))
+      >         "label" ::: JsonString,
+      >         "children" ::: JsonArray (JsonRef "LabelledTree")
       >        ])
       >      ]
       >     (JsonRef "LabelledTree")
@@ -221,9 +221,40 @@ type family JSONStructure (spec :: Specification) where
   JSONStructure spec = JStruct '[] spec
 
 
-type family Lookup env k where
-  Lookup ('(k, v) : more) k = v
-  Lookup (_ : more) k = Lookup more k
+{-|
+  Make the correct reference type by looking up the symbol, and providing
+  the environment in which the symbol was _defined_. We mustn't use the
+  environment in which the reference is _used_, or else 'Specification'
+  would be a dynamically scoped language, instead of a statically scoped
+  language.
+-}
+type family
+    LookupRef
+      (env :: Env)
+      (search :: Env)
+      (target :: Symbol)
+    :: Type
+  where
+    LookupRef
+        env
+        ( ('(target, spec) : moreDefs) : moreStack )
+        target
+      =
+        Ref env spec
+
+    LookupRef
+        env
+        ( ('(miss, spec) : moreDefs) : moreStack)
+        target
+      =
+        LookupRef env ( moreDefs : moreStack) target
+
+    LookupRef
+        env
+        ( '[] : moreStack)
+        target
+      =
+        LookupRef moreStack moreStack target
 
 
 type family PushAll (a :: [k]) (b :: [k]) :: [k] where
@@ -233,7 +264,7 @@ type family PushAll (a :: [k]) (b :: [k]) :: [k] where
 
 type family
   JStruct
-    (env :: [(Symbol, Specification)])
+    (env :: Env)
     (spec :: Specification)
   :: Type
   where
@@ -259,8 +290,8 @@ type family
     JStruct env JsonDateTime = UTCTime
     JStruct env (JsonNullable spec) = Maybe (JStruct env spec)
     JStruct env (JsonLet defs spec) =
-      JStruct (PushAll defs env) spec
-    JStruct env (JsonRef ref) = Ref env (Lookup env ref)
+      JStruct (defs : env) spec
+    JStruct env (JsonRef ref) = LookupRef env env ref
     JStruct env JsonRaw = Value
 
 
@@ -357,5 +388,8 @@ sym
      )
   => b
 sym = fromString $ symbolVal (Proxy @a)
+
+
+type Env = [[(Symbol, Specification)]]
 
 
