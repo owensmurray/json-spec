@@ -414,34 +414,79 @@ main =
           in
             actual `shouldBe` expected
 
-      it "HasField" $
-        let
-          expected :: Maybe TestHasField
-          expected =
-            Just
-              TestHasField
-                { thfFoo = "foo"
-                , thfBar = 10
-                , thfBaz =
-                    TestSubObj
-                      { foo2 = "bar"
-                      , bar2 = negate 10
-                      }
-                }
+      describe "HasField" $ do
+        it "Basic HasField" $
+          let
+            expected :: Maybe TestHasField
+            expected =
+              Just
+                TestHasField
+                  { thfFoo = "foo"
+                  , thfBar = 10
+                  , thfBaz =
+                      TestSubObj
+                        { foo2 = "bar"
+                        , bar2 = negate 10
+                        }
+                  }
 
-          actual :: Maybe TestHasField
-          actual =
-            A.decode
-              "{\
-              \  \"foo\": \"foo\",\
-              \  \"bar\": 10,\
-              \  \"baz\": {\
-              \    \"a_string\": \"bar\",\
-              \    \"an_int\": -10\
-              \  }\
-              \}"
-        in
-          actual `shouldBe` expected
+            actual :: Maybe TestHasField
+            actual =
+              A.decode
+                "{\
+                \  \"foo\": \"foo\",\
+                \  \"bar\": 10,\
+                \  \"baz\": {\
+                \    \"a_string\": \"bar\",\
+                \    \"an_int\": -10\
+                \  }\
+                \}"
+          in
+            actual `shouldBe` expected
+
+        it "missing optional fields" $
+          let
+            expected :: Maybe TestOptionalHasField
+            expected =
+              Just
+                TestOptionalHasField
+                  { foo = Nothing
+                  , bar = Nothing
+                  }
+
+            actual :: Maybe TestOptionalHasField
+            actual = A.decode "{}"
+          in
+            actual `shouldBe` expected
+
+        it "supplied optional fields" $
+          let
+            expected :: Maybe TestOptionalHasField
+            expected =
+              Just
+                TestOptionalHasField
+                  { foo = Just "foo"
+                  , bar = Just Nothing
+                  }
+
+            actual :: Maybe TestOptionalHasField
+            actual = A.decode "{\"foo\": \"foo\", \"bar\": null}"
+          in
+            actual `shouldBe` expected
+        it "mixed optional fields" $
+          let
+            expected :: Maybe TestOptionalHasField
+            expected =
+              Just
+                TestOptionalHasField
+                  { foo = Nothing
+                  , bar = Just (Just "bar")
+                  }
+
+            actual :: Maybe TestOptionalHasField
+            actual = A.decode "{\"bar\": \"bar\"}"
+          in
+            actual `shouldBe` expected
 
       describe "mutual recursion" $ do
         describe "style1" $ do
@@ -473,15 +518,15 @@ main =
                 "{\"foo\":{\"bar\":{\"foo\":{\"bar\":{\"foo\":null}}}}}"
 
               actual =
-                A.encode 
+                A.encode
                   MRec3
                     { foo =
-                        Just 
+                        Just
                           MRec4
                             { bar =
                                 MRec3
                                   { foo =
-                                      Just 
+                                      Just
                                         MRec4
                                           { bar =
                                               MRec3
@@ -501,12 +546,12 @@ main =
                 Just
                   MRec3
                     { foo =
-                        Just 
+                        Just
                           MRec4
                             { bar =
                                 MRec3
                                   { foo =
-                                      Just 
+                                      Just
                                         MRec4
                                           { bar =
                                               MRec3
@@ -605,6 +650,26 @@ instance HasJsonDecodingSpec TestSum where
         pure (TestA int txt)
     Right _ ->
       pure TestB
+
+
+data TestOptionalHasField = TestOptionalHasField
+  { foo :: Maybe Text
+  , bar :: Maybe (Maybe Text)
+  }
+  deriving stock (Show, Eq)
+  deriving FromJSON via (SpecJSON TestOptionalHasField)
+instance HasJsonDecodingSpec TestOptionalHasField where
+  type DecodingSpec TestOptionalHasField =
+    JsonObject
+     '[ "foo" ::? JsonString
+      , "bar" ::? JsonNullable JsonString
+      ]
+  fromJSONStructure v =
+    pure
+      TestOptionalHasField
+        { foo = v.foo
+        , bar = v.bar
+        }
 
 
 data TestObj = TestObj
@@ -951,7 +1016,7 @@ newtype MRec4 = MRec4
 instance HasJsonEncodingSpec MRec4 where
   type EncodingSpec MRec4 =
     JsonLet SharedRecSpecs (JsonRef "four")
-  toJSONStructure MRec4 { bar } = 
+  toJSONStructure MRec4 { bar } =
     Ref
       (Field @"bar" (toJSONStructure bar),
       ())
