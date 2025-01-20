@@ -473,15 +473,15 @@ main =
                 "{\"foo\":{\"bar\":{\"foo\":{\"bar\":{\"foo\":null}}}}}"
 
               actual =
-                A.encode 
+                A.encode
                   MRec3
                     { foo =
-                        Just 
+                        Just
                           MRec4
                             { bar =
                                 MRec3
                                   { foo =
-                                      Just 
+                                      Just
                                         MRec4
                                           { bar =
                                               MRec3
@@ -501,12 +501,12 @@ main =
                 Just
                   MRec3
                     { foo =
-                        Just 
+                        Just
                           MRec4
                             { bar =
                                 MRec3
                                   { foo =
-                                      Just 
+                                      Just
                                         MRec4
                                           { bar =
                                               MRec3
@@ -951,7 +951,7 @@ newtype MRec4 = MRec4
 instance HasJsonEncodingSpec MRec4 where
   type EncodingSpec MRec4 =
     JsonLet SharedRecSpecs (JsonRef "four")
-  toJSONStructure MRec4 { bar } = 
+  toJSONStructure MRec4 { bar } =
     Ref
       (Field @"bar" (toJSONStructure bar),
       ())
