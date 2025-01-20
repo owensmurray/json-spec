@@ -32,7 +32,7 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Records (HasField(getField))
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
-import Prelude (($), Bool, Either, Eq, Int, Maybe, Show)
+import Prelude (Maybe(Just, Nothing), ($), Bool, Either, Eq, Int, Show)
 
 
 {-|
@@ -362,6 +362,13 @@ newtype Field (key :: Symbol) t = Field t
   deriving stock (Show, Eq)
 instance {-# overlappable #-} (HasField k more v) => HasField k (Field notIt x, more) v where
   getField (_, more) = getField @k @_ @v more
+instance {-# overlappable #-} (HasField k more v) => HasField k (Maybe (Field notIt x), more) v where
+  getField (_, more) = getField @k @_ @v more
+instance HasField k (Maybe (Field k v), more) (Maybe v) where
+  getField (mv, _) =
+    case mv of
+      Nothing -> Nothing
+      Just (Field v) -> Just v
 instance HasField k (Field k v, more) v where
   getField (Field v, _) = v
 
