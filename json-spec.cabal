@@ -9,6 +9,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Rick Owens
 category:            JSON
+copyright:           2025 Owens Murray, LLC.
 build-type:          Simple
 extra-source-files:
   README.md
@@ -17,11 +18,11 @@ extra-source-files:
 common dependencies
   build-depends:
     , aeson      >= 2.2.1.0  && < 2.3
-    , base       >= 4.19.0.0 && < 4.21
+    , base       >= 4.19.0.0 && < 4.22
     , containers >= 0.6.8    && < 0.8
     , scientific >= 0.3.7.0  && < 0.4
     , text       >= 2.1      && < 2.2
-    , time       >= 1.9.3    && < 1.13
+    , time       >= 1.9.3    && < 1.15
     , vector     >= 0.13.0.0 && < 0.14
 
 common warnings
