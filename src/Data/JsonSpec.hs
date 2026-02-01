@@ -111,8 +111,9 @@ import Data.JsonSpec.Encode
 import Data.JsonSpec.Spec
   ( Field(Field), FieldSpec(Optional, Required), Ref(Ref, unRef)
   , Specification
-    ( JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt, JsonLet
-    , JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef, JsonString, JsonTag
+    ( JsonAnnotated, JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt
+    , JsonLet, JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef, JsonString
+    , JsonTag
     )
   , Tag(Tag), (:::), (::?), JSONStructure, unField
   )

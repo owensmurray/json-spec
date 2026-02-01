@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -43,25 +44,25 @@ import Prelude (Maybe(Just, Nothing), ($), Bool, Either, Eq, Int, Show)
 
   See 'JSONStructure' for how these map into Haskell representations.
 -}
-data Specification
-  = JsonObject [FieldSpec]
+data Specification where
+  JsonObject :: [FieldSpec] -> Specification
     {-^
       An object with the specified properties, each having its own
       specification. This does not yet support optional properties,
       although a property can be specified as "nullable" using
       `JsonNullable`
     -}
-  | JsonString
+  JsonString :: Specification
     {-^ An arbitrary JSON string. -}
-  | JsonNum
+  JsonNum :: Specification
     {-^ An arbitrary (floating point) JSON number. -}
-  | JsonInt
+  JsonInt :: Specification
     {-^ A JSON integer.  -}
-  | JsonArray Specification
+  JsonArray :: Specification -> Specification
     {-^ A JSON array of values which conform to the given spec. -}
-  | JsonBool
+  JsonBool :: Specification
     {-^ A JSON boolean value. -}
-  | JsonNullable Specification
+  JsonNullable :: Specification -> Specification
     {-^
       A value that can either be `null`, or else a value conforming to
       the specification.
@@ -73,7 +74,7 @@ data Specification
       >     Required "nullableProperty" (JsonNullable JsonString)
       >   ]
     -}
-  | JsonEither Specification Specification
+  JsonEither :: Specification -> Specification -> Specification
     {-^
       One of two different specifications. Corresponds to json-schema
       "oneOf". Useful for encoding sum types. E.g:
@@ -107,14 +108,15 @@ data Specification
       >           )
       >       )
     -}
-  | JsonTag Symbol {-^ A constant string value -}
-  | JsonDateTime
+  JsonTag :: Symbol -> Specification
+    {-^ A constant string value -}
+  JsonDateTime :: Specification
     {-^
       A JSON string formatted as an ISO-8601 string. In Haskell this
       corresponds to `Data.Time.UTCTime`, and in json-schema it corresponds
       to the "date-time" format.
     -}
-  | JsonLet [(Symbol, Specification)] Specification
+  JsonLet :: [(Symbol, Specification)] -> Specification -> Specification
     {-^
       A "let" expression. This is useful for giving names to types, which can
       then be used in the generated code.
@@ -170,12 +172,38 @@ data Specification
       >      ]
       >     (JsonRef "LabelledTree")
     -}
-  | JsonRef Symbol
+  JsonRef :: Symbol -> Specification
     {-^
       A reference to a specification which has been defined in a surrounding
       'JsonLet'.
     -}
-  | JsonRaw {-^ Some raw, uninterpreted JSON value -}
+  JsonRaw :: Specification
+    {-^ Some raw, uninterpreted JSON value -}
+  JsonAnnotated :: forall k. [(Symbol, k)] -> Specification -> Specification
+    {-^
+      An annotation on a specification. This is purely for documentation
+      purposes and has no effect on encoding or decoding. The annotations
+      are a list of key-value pairs at the type level. Keys are always
+      symbols (type-level strings). Values can be any kind @k@: strings
+      ('Symbol'), booleans ('Bool'), natural numbers ('Nat'), or any
+      custom promoted type the user defines. Within one list, all values
+      must have the same kind.
+
+      E.g.:
+
+      > type AnnotatedUser =
+      >   JsonAnnotated
+      >     '[ '("description", "A user record")
+      >      , '("example", "...")
+      >      ]
+      >     (JsonObject '[
+      >       Required "name" JsonString,
+      >       Optional "last-login" JsonDateTime
+      >      ])
+      >
+      > type ReadOnlyObject =
+      >   JsonAnnotated '[ '("readOnly", 'True) ] (JsonObject '[])
+    -}
 
 
 {-| Specify a field in an object.  -}
@@ -293,6 +321,8 @@ type family
       JStruct (defs : env) spec
     JStruct env (JsonRef ref) = LookupRef env env ref
     JStruct env JsonRaw = Value
+    JStruct env (JsonAnnotated _annotations spec) =
+      JStruct env spec
 
 
 {-|
@@ -398,5 +428,4 @@ sym = fromString $ symbolVal (Proxy @a)
 
 
 type Env = [[(Symbol, Specification)]]
-
 
