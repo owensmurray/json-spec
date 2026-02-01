@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -43,25 +44,25 @@ import Prelude (Maybe(Just, Nothing), ($), Bool, Either, Eq, Int, Show)
 
   See 'JSONStructure' for how these map into Haskell representations.
 -}
-data Specification
-  = JsonObject [FieldSpec]
+data Specification where
+  JsonObject :: [FieldSpec] -> Specification
     {-^
       An object with the specified properties, each having its own
       specification. This does not yet support optional properties,
       although a property can be specified as "nullable" using
       `JsonNullable`
     -}
-  | JsonString
+  JsonString :: Specification
     {-^ An arbitrary JSON string. -}
-  | JsonNum
+  JsonNum :: Specification
     {-^ An arbitrary (floating point) JSON number. -}
-  | JsonInt
+  JsonInt :: Specification
     {-^ A JSON integer.  -}
-  | JsonArray Specification
+  JsonArray :: Specification -> Specification
     {-^ A JSON array of values which conform to the given spec. -}
-  | JsonBool
+  JsonBool :: Specification
     {-^ A JSON boolean value. -}
-  | JsonNullable Specification
+  JsonNullable :: Specification -> Specification
     {-^
       A value that can either be `null`, or else a value conforming to
       the specification.
@@ -73,7 +74,7 @@ data Specification
       >     Required "nullableProperty" (JsonNullable JsonString)
       >   ]
     -}
-  | JsonEither Specification Specification
+  JsonEither :: Specification -> Specification -> Specification
     {-^
       One of two different specifications. Corresponds to json-schema
       "oneOf". Useful for encoding sum types. E.g:
@@ -107,14 +108,15 @@ data Specification
       >           )
       >       )
     -}
-  | JsonTag Symbol {-^ A constant string value -}
-  | JsonDateTime
+  JsonTag :: Symbol -> Specification
+    {-^ A constant string value -}
+  JsonDateTime :: Specification
     {-^
       A JSON string formatted as an ISO-8601 string. In Haskell this
       corresponds to `Data.Time.UTCTime`, and in json-schema it corresponds
       to the "date-time" format.
     -}
-  | JsonLet [(Symbol, Specification)] Specification
+  JsonLet :: [(Symbol, Specification)] -> Specification -> Specification
     {-^
       A "let" expression. This is useful for giving names to types, which can
       then be used in the generated code.
@@ -170,12 +172,13 @@ data Specification
       >      ]
       >     (JsonRef "LabelledTree")
     -}
-  | JsonRef Symbol
+  JsonRef :: Symbol -> Specification
     {-^
       A reference to a specification which has been defined in a surrounding
       'JsonLet'.
     -}
-  | JsonRaw {-^ Some raw, uninterpreted JSON value -}
+  JsonRaw :: Specification
+    {-^ Some raw, uninterpreted JSON value -}
 
 
 {-| Specify a field in an object.  -}
