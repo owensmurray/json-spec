@@ -33,8 +33,9 @@ import Data.JsonSpec
   , HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Ref(Ref)
   , SpecJSON(SpecJSON)
   , Specification
-    ( JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt, JsonLet
-    , JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef, JsonString, JsonTag
+    ( JsonAnnotated, JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt
+    , JsonLet, JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef, JsonString
+    , JsonTag
     )
   , Tag(Tag), (:::), (::?), eitherDecode, encode, unField
   )
@@ -485,6 +486,85 @@ main =
 
             actual :: Maybe TestOptionalHasField
             actual = A.decode "{\"bar\": \"bar\"}"
+          in
+            actual `shouldBe` expected
+
+      describe "annotated" $ do
+        it "encodes" $
+          let
+            actual :: ByteString
+            actual =
+              A.encode
+                AnnotatedUser
+                  { auName = "alice"
+                  , auAge = 30
+                  }
+
+            expected :: ByteString
+            expected = "{\"age\":30,\"name\":\"alice\"}"
+          in
+            actual `shouldBe` expected
+
+        it "decodes" $
+          let
+            actual :: Either String AnnotatedUser
+            actual = A.eitherDecode "{\"name\":\"alice\",\"age\":30}"
+
+            expected :: Either String AnnotatedUser
+            expected =
+              Right
+                AnnotatedUser
+                  { auName = "alice"
+                  , auAge = 30
+                  }
+          in
+            actual `shouldBe` expected
+
+        it "works with JsonLet" $
+          let
+            actual :: ByteString
+            actual =
+              A.encode
+                AnnotatedTriangle
+                  { atVertex1 = AnnotatedVertex 1 2 3
+                  , atVertex2 = AnnotatedVertex 4 5 6
+                  , atVertex3 = AnnotatedVertex 7 8 9
+                  }
+
+            expected :: ByteString
+            expected = "{\"vertex1\":{\"x\":1,\"y\":2,\"z\":3},\"vertex2\":{\"x\":4,\"y\":5,\"z\":6},\"vertex3\":{\"x\":7,\"y\":8,\"z\":9}}"
+          in
+            actual `shouldBe` expected
+
+        it "decodes with JsonLet" $
+          let
+            actual :: Either String AnnotatedTriangle
+            actual =
+              A.eitherDecode
+                "{\"vertex1\":{\"x\":1,\"y\":2,\"z\":3},\"vertex2\":{\"x\":4,\"y\":5,\"z\":6},\"vertex3\":{\"x\":7,\"y\":8,\"z\":9}}"
+
+            expected :: Either String AnnotatedTriangle
+            expected =
+              Right
+                AnnotatedTriangle
+                  { atVertex1 = AnnotatedVertex 1 2 3
+                  , atVertex2 = AnnotatedVertex 4 5 6
+                  , atVertex3 = AnnotatedVertex 7 8 9
+                  }
+          in
+            actual `shouldBe` expected
+
+        it "supports non-Symbol annotation values (e.g. Bool)" $
+          let
+            actual :: ByteString
+            actual =
+              A.encode
+                AnnotatedWithBool
+                  { awbName = "test"
+                  }
+
+            expected :: ByteString
+            expected = "{\"name\":\"test\"}"
           in
             actual `shouldBe` expected
 
@@ -1026,6 +1106,142 @@ instance HasJsonDecodingSpec MRec4 where
     = do
       bar <- fromJSONStructure rawbar
       pure MRec4 { bar }
+
+{- ========================================================================== -}
+
+
+{- Annotated test. -}
+{- ========================================================================== -}
+
+data AnnotatedUser = AnnotatedUser
+  { auName :: Text
+  ,  auAge :: Int
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON AnnotatedUser)
+instance HasJsonEncodingSpec AnnotatedUser where
+  type EncodingSpec AnnotatedUser =
+    JsonAnnotated
+      '[ '("description", "A user with a name and age")
+       , '("example", "{\"name\": \"alice\", \"age\": 30}")
+       ]
+      (JsonObject
+        '[ Required "name" JsonString
+         , Required "age" JsonInt
+         ])
+  toJSONStructure AnnotatedUser { auName, auAge } =
+    (Field @"name" auName,
+    (Field @"age" auAge,
+    ()))
+instance HasJsonDecodingSpec AnnotatedUser where
+  type DecodingSpec AnnotatedUser = EncodingSpec AnnotatedUser
+  fromJSONStructure
+      (Field @"name" auName,
+      (Field @"age" auAge,
+      ()))
+    =
+      pure AnnotatedUser { auName, auAge }
+
+
+data AnnotatedVertex = AnnotatedVertex
+  { avX :: Int
+  , avY :: Int
+  , avZ :: Int
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON AnnotatedVertex)
+instance HasJsonEncodingSpec AnnotatedVertex where
+  type EncodingSpec AnnotatedVertex =
+    JsonAnnotated
+      '[ '("description", "A 3D vertex") ]
+      (JsonObject
+        '[ Required "x" JsonInt
+         , Required "y" JsonInt
+         , Required "z" JsonInt
+         ])
+  toJSONStructure AnnotatedVertex { avX, avY, avZ } =
+    (Field @"x" avX,
+    (Field @"y" avY,
+    (Field @"z" avZ,
+    ())))
+instance HasJsonDecodingSpec AnnotatedVertex where
+  type DecodingSpec AnnotatedVertex = EncodingSpec AnnotatedVertex
+  fromJSONStructure
+      (Field @"x" avX,
+      (Field @"y" avY,
+      (Field @"z" avZ,
+      ())))
+    =
+      pure AnnotatedVertex { avX, avY, avZ }
+
+
+data AnnotatedTriangle = AnnotatedTriangle
+  { atVertex1 :: AnnotatedVertex
+  , atVertex2 :: AnnotatedVertex
+  , atVertex3 :: AnnotatedVertex
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON AnnotatedTriangle)
+instance HasJsonEncodingSpec AnnotatedTriangle where
+  type EncodingSpec AnnotatedTriangle =
+    JsonLet
+      '[ '("Vertex",
+             JsonAnnotated
+               '[ '("description", "A 3D vertex used in shapes") ]
+               (JsonObject
+                 '[ Required "x" JsonInt
+                  , Required "y" JsonInt
+                  , Required "z" JsonInt
+                  ]))
+       ]
+      (JsonAnnotated
+        '[ '("description", "A triangle with three vertices") ]
+        (JsonObject
+          '[ Required "vertex1" (JsonRef "Vertex")
+           , Required "vertex2" (JsonRef "Vertex")
+           , Required "vertex3" (JsonRef "Vertex")
+           ]))
+  toJSONStructure AnnotatedTriangle { atVertex1, atVertex2, atVertex3 } =
+    (Field @"vertex1" (Ref $ toJSONStructure atVertex1),
+    (Field @"vertex2" (Ref $ toJSONStructure atVertex2),
+    (Field @"vertex3" (Ref $ toJSONStructure atVertex3),
+    ())))
+instance HasJsonDecodingSpec AnnotatedTriangle where
+  type DecodingSpec AnnotatedTriangle = EncodingSpec AnnotatedTriangle
+  fromJSONStructure
+      (Field @"vertex1" (Ref rawVertex1),
+      (Field @"vertex2" (Ref rawVertex2),
+      (Field @"vertex3" (Ref rawVertex3),
+      ())))
+    = do
+      atVertex1 <- fromJSONStructure rawVertex1
+      atVertex2 <- fromJSONStructure rawVertex2
+      atVertex3 <- fromJSONStructure rawVertex3
+      pure AnnotatedTriangle { atVertex1, atVertex2, atVertex3 }
+
+
+data AnnotatedWithBool = AnnotatedWithBool
+  { awbName :: Text
+  }
+  deriving stock (Show, Eq)
+  deriving (ToJSON, FromJSON) via (SpecJSON AnnotatedWithBool)
+instance HasJsonEncodingSpec AnnotatedWithBool where
+  type EncodingSpec AnnotatedWithBool =
+    JsonAnnotated
+      '[ '("readOnly", 'True)
+       , '("deprecated", 'False)
+       ]
+      (JsonObject '[ Required "name" JsonString ])
+  toJSONStructure AnnotatedWithBool { awbName } =
+    (Field @"name" awbName,
+    ())
+instance HasJsonDecodingSpec AnnotatedWithBool where
+  type DecodingSpec AnnotatedWithBool = EncodingSpec AnnotatedWithBool
+  fromJSONStructure
+      (Field @"name" awbName,
+      ())
+    =
+      pure AnnotatedWithBool { awbName }
 
 {- ========================================================================== -}
 
