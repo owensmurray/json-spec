@@ -179,6 +179,31 @@ data Specification where
     -}
   JsonRaw :: Specification
     {-^ Some raw, uninterpreted JSON value -}
+  JsonAnnotated :: forall k. [(Symbol, k)] -> Specification -> Specification
+    {-^
+      An annotation on a specification. This is purely for documentation
+      purposes and has no effect on encoding or decoding. The annotations
+      are a list of key-value pairs at the type level. Keys are always
+      symbols (type-level strings). Values can be any kind @k@: strings
+      ('Symbol'), booleans ('Bool'), natural numbers ('Nat'), or any
+      custom promoted type the user defines. Within one list, all values
+      must have the same kind.
+
+      E.g.:
+
+      > type AnnotatedUser =
+      >   JsonAnnotated
+      >     '[ '("description", "A user record")
+      >      , '("example", "...")
+      >      ]
+      >     (JsonObject '[
+      >       Required "name" JsonString,
+      >       Optional "last-login" JsonDateTime
+      >      ])
+      >
+      > type ReadOnlyObject =
+      >   JsonAnnotated '[ '("readOnly", 'True) ] (JsonObject '[])
+    -}
 
 
 {-| Specify a field in an object.  -}
@@ -296,6 +321,8 @@ type family
       JStruct (defs : env) spec
     JStruct env (JsonRef ref) = LookupRef env env ref
     JStruct env JsonRaw = Value
+    JStruct env (JsonAnnotated _annotations spec) =
+      JStruct env spec
 
 
 {-|
