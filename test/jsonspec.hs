@@ -6,8 +6,8 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeAbstractions #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -19,7 +19,6 @@
   be disabled individually, but then we re-enable the specific warnings
   we most care about.
 -}
-{-# OPTIONS_GHC -Wwarn #-}
 {-# OPTIONS_GHC -Werror=missing-import-lists #-}
 
 module Main (main) where
@@ -37,7 +36,8 @@ import Data.JsonSpec
     , JsonLet, JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef, JsonString
     , JsonTag
     )
-  , Tag(Tag), (:::), (::?), eitherDecode, encode, unField
+  , Tag(Tag), (:::), (::?), eitherDecode
+  , encode, unField
   )
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
@@ -690,16 +690,18 @@ data TestSum
 instance HasJsonEncodingSpec TestSum where
   type EncodingSpec TestSum =
     JsonEither
-      (JsonObject '[
-        Required "tag" (JsonTag "a"),
-        Required "content" (JsonObject [
-          Required "int-field" JsonInt,
-          Required "txt-field" JsonString
-        ])
-      ])
-      (JsonObject '[
-        Required "tag" (JsonTag "b")
-      ])
+      '[
+        JsonObject '[
+          Required "tag" (JsonTag "a"),
+          Required "content" (JsonObject [
+            Required "int-field" JsonInt,
+            Required "txt-field" JsonString
+          ])
+        ],
+        JsonObject '[
+          Required "tag" (JsonTag "b")
+        ]
+      ]
   toJSONStructure = \case
     TestA i t ->
       Left

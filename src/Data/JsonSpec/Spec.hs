@@ -33,7 +33,8 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Records (HasField(getField))
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
-import Prelude (Maybe(Just, Nothing), ($), Bool, Either, Eq, Int, Show)
+import qualified GHC.TypeError as GE
+import Prelude (Either, Maybe(Just, Nothing), ($), Bool, Eq, Int, Show)
 
 
 {-|
@@ -74,10 +75,18 @@ data Specification where
       >     Required "nullableProperty" (JsonNullable JsonString)
       >   ]
     -}
-  JsonEither :: Specification -> Specification -> Specification
+  JsonEither :: [Specification] -> Specification
     {-^
-      One of two different specifications. Corresponds to json-schema
-      "oneOf". Useful for encoding sum types. E.g:
+      One of several different specifications. Corresponds to json-schema
+      "oneOf". Useful for encoding sum types.
+
+      Takes a type-level list of specs. In the structural representation
+      ('JStruct'), `JsonEither` maps to nested `Either`: two or more
+      branches become @Either (JStruct env a) (Either (JStruct env b) ...)@;
+      a single branch maps to @JStruct env spec@ (no sum wrapper). Use
+      `Left`/`Right` for construction and pattern matching.
+
+      Example:
 
       > data MyType
       >   = Foo Text
@@ -86,27 +95,37 @@ data Specification where
       > instance HasJsonEncodingSpec MyType where
       >   type EncodingSpec MyType =
       >     JsonEither
-      >       (
+      >       '[
       >         JsonObject '[
       >           Required "tag" (JsonTag "foo"),
       >           Required "content" JsonString
+      >         ],
+      >         JsonObject '[
+      >           Required "tag" (JsonTag "bar"),
+      >           Required "content" JsonInt
+      >         ],
+      >         JsonObject '[
+      >           Required "tag" (JsonTag "baz"),
+      >           Required "content" JsonDateTime
       >         ]
-      >       )
-      >       (
-      >         JsonEither
-      >           (
-      >             JsonObject '[
-      >               Required "tag" (JsonTag "bar"),
-      >               Required "content" JsonInt
-      >             ]
-      >           )
-      >           (
-      >             JsonObject '[
-      >               Required "tag" (JsonTag "baz"),
-      >               Required "content" JsonDateTime
-      >             ]
-      >           )
-      >       )
+      >       ]
+      >
+      >   toJSONStructure = \case
+      >     Foo t ->
+      >       Left
+      >         ( Field @"tag" (Tag @"foo")
+      >         , (Field @"content" t, ())
+      >         )
+      >     Bar i ->
+      >       Right (Left
+      >         ( Field @"tag" (Tag @"bar")
+      >         , (Field @"content" i, ())
+      >         )
+      >     Baz dt ->
+      >       Right (Right
+      >         ( Field @"tag" (Tag @"baz")
+      >         , (Field @"content" dt, ())
+      >         )
     -}
   JsonTag :: Symbol -> Specification
     {-^ A constant string value -}
@@ -290,6 +309,19 @@ type family PushAll (a :: [k]) (b :: [k]) :: [k] where
   PushAll (e : more) b = PushAll more (e : b)
 
 
+{-|
+  Structural type for `JsonEither`: nested `Either` for two or more branches,
+  or the lone branch type for a singleton list. Empty list is disallowed.
+-}
+type family EitherJStruct (env :: Env) (specs :: [Specification]) :: Type where
+  EitherJStruct _env '[] =
+    GE.TypeError (GE.Text "JsonEither requires at least one branch")
+  EitherJStruct env '[spec] =
+    JStruct env spec
+  EitherJStruct env (a ': b ': more) =
+    Either (JStruct env a) (EitherJStruct env (b ': more))
+
+
 type family
   JStruct
     (env :: Env)
@@ -312,8 +344,8 @@ type family
     JStruct env JsonInt = Int
     JStruct env (JsonArray spec) = [JStruct env spec]
     JStruct env JsonBool = Bool
-    JStruct env (JsonEither left right) =
-      Either (JStruct env left) (JStruct env right)
+    JStruct env (JsonEither specs) =
+      EitherJStruct env specs
     JStruct env (JsonTag tag) = Tag tag
     JStruct env JsonDateTime = UTCTime
     JStruct env (JsonNullable spec) = Maybe (JStruct env spec)
