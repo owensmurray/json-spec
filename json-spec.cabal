@@ -9,7 +9,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Rick Owens
 category:            JSON
-copyright:           2025 Owens Murray, LLC.
+copyright:           2026 Owens Murray, LLC.
 build-type:          Simple
 extra-doc-files:
   CHANGELOG.md
