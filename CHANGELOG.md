@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.3.0.0
+
 ### JsonEither now takes a type-level list
 
 `JsonEither` now accepts a type-level list of specs (`JsonEither '[a, b, c]`)
