@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.3.0.1
+
+- Support GHC 9.14.
 
 ## 1.3.0.0
 
