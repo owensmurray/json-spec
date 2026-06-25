@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                json-spec
-version:             1.3.0.1
+version:             1.3.0.2
 synopsis:            Type-level JSON specification
 maintainer:          rick@owensmurray.com
 description:         See the README at: https://github.com/owensmurray/json-spec#json-spec
@@ -20,10 +20,10 @@ common dependencies
   build-depends:
     , aeson      >= 2.2.1.0  && < 2.3
     , base       >= 4.19.0.0 && < 4.23
-    , containers >= 0.6.8    && < 0.8
+    , containers >= 0.6.8    && < 0.9
     , scientific >= 0.3.7.0  && < 0.4
     , text       >= 2.1      && < 2.2
-    , time       >= 1.9.3    && < 1.15
+    , time       >= 1.9.3    && < 1.16
     , vector     >= 0.13.0.0 && < 0.14
 
 common warnings

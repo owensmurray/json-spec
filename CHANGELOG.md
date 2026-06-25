@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0.2
+
+- Relax upper bounds on `containers` and `time` for current Hackage
+  packages.
+
 ## 1.3.0.1
 
 - Support GHC 9.14.
