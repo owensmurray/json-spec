@@ -26,6 +26,7 @@ module Data.JsonSpec.Spec (
 
 import Data.Aeson (Value)
 import Data.Kind (Type)
+import Data.Map (Map)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.String (IsString(fromString))
@@ -61,6 +62,14 @@ data Specification where
     {-^ A JSON integer.  -}
   JsonArray :: Specification -> Specification
     {-^ A JSON array of values which conform to the given spec. -}
+  JsonDict :: Specification -> Specification
+    {-^
+      A JSON object used as a dictionary: arbitrary string keys, with every
+      value conforming to the given specification.
+
+      This is distinct from 'JsonObject', which represents a record with
+      statically known fields.
+    -}
   JsonBool :: Specification
     {-^ A JSON boolean value. -}
   JsonNullable :: Specification -> Specification
@@ -257,8 +266,8 @@ type (::?) = Optional
   when building your 'HasJsonDecodingSpec' instances. See @TestHasField@
   in the tests for an example
 
-  Arrays, booleans, numbers, and strings are just Lists, 'Bool's,
-  'Scientific's, and 'Text's respectively.
+  Arrays, dicts, booleans, numbers, and strings are just Lists,
+  @'Map' 'Text'@, 'Bool's, 'Scientific's, and 'Text's respectively.
 
   If the user can convert their normal business logic type to/from this
   tuple type, then they get a JSON encoding to/from their type that is
@@ -343,6 +352,7 @@ type family
     JStruct env JsonNum = Scientific
     JStruct env JsonInt = Int
     JStruct env (JsonArray spec) = [JStruct env spec]
+    JStruct env (JsonDict spec) = Map Text (JStruct env spec)
     JStruct env JsonBool = Bool
     JStruct env (JsonEither specs) =
       EitherJStruct env specs

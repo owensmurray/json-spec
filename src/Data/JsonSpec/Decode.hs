@@ -23,6 +23,7 @@ import Data.Aeson.Types
 import Data.JsonSpec.Spec
   ( Field(Field), Ref(Ref), Tag(Tag), JSONStructure, JStruct, Specification, sym
   )
+import Data.Map (Map)
 import Data.Proxy (Proxy)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
@@ -33,7 +34,9 @@ import Prelude
   , Maybe(Just, Nothing), MonadFail(fail), Semigroup((<>))
   , Traversable(traverse), ($), (.), (<$>), Bool, Int, String
   )
+import qualified Data.Aeson.Key as AK
 import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Map as Map
 import qualified Data.Vector as Vector
 
 
@@ -120,6 +123,17 @@ instance (StructureFromJSON a) => StructureFromJSON [a] where
     withArray
       "list"
       (fmap Vector.toList . traverse reprParseJSON)
+instance (StructureFromJSON a) => StructureFromJSON (Map Text a) where
+  reprParseJSON =
+    withObject
+      "dict"
+      ( fmap Map.fromList
+          . traverse
+              ( \(key, val) ->
+                  (\val_ -> (AK.toText key, val_)) <$> reprParseJSON val
+              )
+          . KM.toList
+      )
 instance StructureFromJSON UTCTime where
   reprParseJSON = parseJSON
 instance (StructureFromJSON a) => StructureFromJSON (Maybe a) where

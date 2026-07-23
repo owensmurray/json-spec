@@ -63,3 +63,10 @@ instance HasJsonDecodingSpec User where
 ```
 
 For more examples, take a look at the test suite.
+
+`JsonDict` represents a JSON object whose keys are arbitrary strings and
+whose values all conform to one spec:
+
+```haskell
+type ScoresByUser = JsonDict JsonInt
+```
