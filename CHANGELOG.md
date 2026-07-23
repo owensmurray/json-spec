@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0.0
+
+- Add `JsonDict` for JSON objects with arbitrary string keys and values that
+  all conform to one known specification.
+
 ## 1.3.0.2
 
 - Relax upper bounds on `containers` and `time` for current Hackage
