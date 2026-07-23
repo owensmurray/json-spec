@@ -16,6 +16,7 @@ module Data.JsonSpec.Encode (
 
 
 import Data.Aeson (ToJSON(toJSON), Value)
+import Data.Map (Map)
 import Data.JsonSpec.Spec
   ( Field(Field), Ref(unRef), Specification(JsonArray), JSONStructure, JStruct
   , Tag, sym
@@ -31,7 +32,9 @@ import Prelude
   , (.), Bool, Int, id, maybe
   )
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Key as AK
 import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 
@@ -83,6 +86,12 @@ instance (KnownSymbol const) => StructureToJSON (Tag const) where
   reprToJSON _proxy = toJSON (sym @const @Text)
 instance (StructureToJSON a) => StructureToJSON [a] where
   reprToJSON = toJSON . fmap reprToJSON
+instance (StructureToJSON a) => StructureToJSON (Map Text a) where
+  reprToJSON =
+    A.Object
+      . KM.fromList
+      . fmap (\(key, val) -> (AK.fromText key, reprToJSON val))
+      . Map.toList
 instance StructureToJSON UTCTime where
   reprToJSON = toJSON
 instance (StructureToJSON a) => StructureToJSON (Maybe a) where

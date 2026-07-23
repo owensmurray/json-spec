@@ -26,19 +26,21 @@ module Main (main) where
 import Control.Monad (join)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString.Lazy (ByteString)
+import Data.Either (isLeft)
 import Data.JsonSpec
   ( Field(Field), FieldSpec(Optional, Required)
   , HasJsonDecodingSpec(DecodingSpec, fromJSONStructure)
   , HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Ref(Ref)
   , SpecJSON(SpecJSON)
   , Specification
-    ( JsonAnnotated, JsonArray, JsonBool, JsonDateTime, JsonEither, JsonInt
-    , JsonLet, JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef, JsonString
-    , JsonTag
+    ( JsonAnnotated, JsonArray, JsonBool, JsonDateTime, JsonDict, JsonEither
+    , JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef
+    , JsonString, JsonTag
     )
   , Tag(Tag), (:::), (::?), eitherDecode
   , encode, unField
   )
+import Data.Map (Map)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
@@ -49,8 +51,9 @@ import Prelude
   , Functor(fmap), Maybe(Just, Nothing), Monad((>>=)), Num(negate)
   , Traversable(traverse), ($), (.), Eq, IO, Int, Show, String, realToFrac
   )
-import Test.Hspec (describe, hspec, it, shouldBe)
+import Test.Hspec (describe, hspec, it, shouldBe, shouldSatisfy)
 import qualified Data.Aeson as A
+import qualified Data.Map as Map
 
 
 main :: IO ()
@@ -366,6 +369,184 @@ main =
                     (Field @"qoo" False,
                     ())))))
                   )
+          in
+            actual `shouldBe` expected
+
+      describe "dict" $ do
+        it "encodes an empty dict" $
+          let
+            actual :: A.Value
+            actual =
+              encode
+                (Proxy @(JsonDict JsonInt))
+                Map.empty
+
+            expected :: A.Value
+            expected = A.object []
+          in
+            actual `shouldBe` expected
+
+        it "round-trips a non-empty int dict" $
+          let
+            raw :: A.Value
+            raw =
+              A.object
+                [ ("alpha", A.Number 1)
+                , ("beta", A.Number 2)
+                ]
+
+            decoded :: Either String (Map Text Int)
+            decoded =
+              eitherDecode
+                (Proxy @(JsonDict JsonInt))
+                raw
+
+            encoded :: Either String A.Value
+            encoded =
+              fmap
+                (encode (Proxy @(JsonDict JsonInt)))
+                decoded
+
+            expected :: Either String A.Value
+            expected = Right raw
+          in
+            encoded `shouldBe` expected
+
+        it "decodes a dict of objects" $
+          let
+            raw :: A.Value
+            raw =
+              A.object
+                [ ( "first"
+                  , A.object
+                      [ ("foo", A.String "first")
+                      , ("bar", A.Number 1)
+                      ]
+                  )
+                , ( "second"
+                  , A.object
+                      [ ("foo", A.String "second")
+                      , ("bar", A.Number 2)
+                      ]
+                  )
+                ]
+
+            actual
+              :: Either
+                   String
+                   (Map Text
+                     (Field "foo" Text,
+                     (Field "bar" Int,
+                     ())))
+            actual =
+              eitherDecode
+                (Proxy @(JsonDict (JsonObject
+                  '[ "foo" ::: JsonString
+                   , "bar" ::: JsonInt
+                   ])))
+                raw
+
+            expected
+              :: Either
+                   String
+                   (Map Text
+                     (Field "foo" Text,
+                     (Field "bar" Int,
+                     ())))
+            expected =
+              Right $
+                Map.fromList
+                  [ ( "first"
+                    , (Field @"foo" "first",
+                      (Field @"bar" 1,
+                      ()))
+                    )
+                  , ( "second"
+                    , (Field @"foo" "second",
+                      (Field @"bar" 2,
+                      ()))
+                    )
+                  ]
+          in
+            actual `shouldBe` expected
+
+        it "decodes a dict of nullable values" $
+          let
+            raw :: A.Value
+            raw =
+              A.object
+                [ ("present", A.String "value")
+                , ("missing", A.Null)
+                ]
+
+            actual :: Either String (Map Text (Maybe Text))
+            actual =
+              eitherDecode
+                (Proxy @(JsonDict (JsonNullable JsonString)))
+                raw
+
+            expected :: Either String (Map Text (Maybe Text))
+            expected =
+              Right $
+                Map.fromList
+                  [ ("missing", Nothing)
+                  , ("present", Just "value")
+                  ]
+          in
+            actual `shouldBe` expected
+
+        it "rejects dict values that do not match the value spec" $
+          let
+            actual :: Either String (Map Text Int)
+            actual =
+              eitherDecode
+                (Proxy @(JsonDict JsonInt))
+                (A.object [("bad", A.String "not an int")])
+          in
+            actual `shouldSatisfy` isLeft
+
+        it "rejects non-object dict JSON" $
+          let
+            actual :: Either String (Map Text Int)
+            actual =
+              eitherDecode
+                (Proxy @(JsonDict JsonInt))
+                (A.String "not an object")
+          in
+            actual `shouldSatisfy` isLeft
+
+        it "works inside an object field" $
+          let
+            actual
+              :: Either
+                   String
+                   (Field "attrs" (Map Text Int), ())
+            actual =
+              eitherDecode
+                (Proxy @(JsonObject '[ "attrs" ::: JsonDict JsonInt ]))
+                ( A.object
+                    [ ( "attrs"
+                      , A.object
+                          [ ("alpha", A.Number 1)
+                          , ("beta", A.Number 2)
+                          ]
+                      )
+                    ]
+                )
+
+            expected
+              :: Either
+                   String
+                   (Field "attrs" (Map Text Int), ())
+            expected =
+              Right
+                ( Field @"attrs" $
+                    Map.fromList
+                      [ ("alpha", 1)
+                      , ("beta", 2)
+                      ]
+                , ()
+                )
           in
             actual `shouldBe` expected
 
