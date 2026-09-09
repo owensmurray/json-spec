@@ -98,7 +98,6 @@ module Data.JsonSpec (
   StructureToJSON,
 ) where
 
-
 import Data.Aeson (FromJSON(parseJSON), ToJSON(toJSON))
 import Data.JsonSpec.Decode
   ( HasJsonDecodingSpec(DecodingSpec, fromJSONStructure)
@@ -118,7 +117,6 @@ import Data.JsonSpec.Spec
   , Tag(Tag), (:::), (::?), JSONStructure, unField
   )
 import Prelude ((.), (<$>), (=<<))
-
 
 {- |
   Helper for defining 'ToJSON' and 'FromJSON' instances based on

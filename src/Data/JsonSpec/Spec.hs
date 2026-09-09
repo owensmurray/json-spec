@@ -23,7 +23,6 @@ module Data.JsonSpec.Spec (
   (::?),
 ) where
 
-
 import Data.Aeson (Value)
 import Data.Kind (Type)
 import Data.Map (Map)
@@ -34,9 +33,8 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Records (HasField(getField))
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import Prelude (Maybe(Just, Nothing), ($), Bool, Either, Eq, Int, Show)
 import qualified GHC.TypeError as GE
-import Prelude (Either, Maybe(Just, Nothing), ($), Bool, Eq, Int, Show)
-
 
 {-|
   Simple DSL for defining type level "specifications" for JSON

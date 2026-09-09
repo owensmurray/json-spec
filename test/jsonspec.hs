@@ -37,8 +37,7 @@ import Data.JsonSpec
     , JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef
     , JsonString, JsonTag
     )
-  , Tag(Tag), (:::), (::?), eitherDecode
-  , encode, unField
+  , Tag(Tag), (:::), (::?), eitherDecode, encode, unField
   )
 import Data.Map (Map)
 import Data.Proxy (Proxy(Proxy))
@@ -54,7 +53,6 @@ import Prelude
 import Test.Hspec (describe, hspec, it, shouldBe, shouldSatisfy)
 import qualified Data.Aeson as A
 import qualified Data.Map as Map
-
 
 main :: IO ()
 main =

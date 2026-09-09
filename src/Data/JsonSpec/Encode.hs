@@ -14,13 +14,12 @@ module Data.JsonSpec.Encode (
   encode,
 ) where
 
-
 import Data.Aeson (ToJSON(toJSON), Value)
-import Data.Map (Map)
 import Data.JsonSpec.Spec
   ( Field(Field), Ref(unRef), Specification(JsonArray), JSONStructure, JStruct
   , Tag, sym
   )
+import Data.Map (Map)
 import Data.Proxy (Proxy(Proxy))
 import Data.Scientific (Scientific)
 import Data.Set (Set)
@@ -36,7 +35,6 @@ import qualified Data.Aeson.Key as AK
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-
 
 {- |
   Types of this class can be encoded to JSON according to a type-level
