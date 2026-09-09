@@ -14,7 +14,6 @@ module Data.JsonSpec.Decode (
   eitherDecode,
 ) where
 
-
 import Control.Applicative (Alternative((<|>)))
 import Data.Aeson.Types
   ( FromJSON(parseJSON), Value(Null, Object), Parser, parseEither, withArray
@@ -38,7 +37,6 @@ import qualified Data.Aeson.Key as AK
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Map as Map
 import qualified Data.Vector as Vector
-
 
 {- |
   Types of this class can be JSON decoded according to a type-level

@@ -23,7 +23,6 @@ import Data.JsonSpec
 import Data.Text (Text)
 import Prelude (Applicative(pure), ($), (.), Eq, IO, Ord)
 
-
 main :: IO ()
 main =
   {-

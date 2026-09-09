@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0.1
+
+- Relax the `aeson` upper bound to allow 2.3.x.
+
 ## 1.4.0.0
 
 - Add `JsonDict` for JSON objects with arbitrary string keys and values that
