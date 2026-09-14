@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0.0
+
+Breaking release: the specification DSL and tuple codec API were
+reworked.
+
+- Add a textual JsonSpec language with parser
+  (`Data.JsonSpec.Language.Parser`), Template Haskell quasiquoter
+  (`Data.JsonSpec.Language.QQ`), and language documentation
+  (`docs/language-spec.md`). Specs can use open `type` and closed
+  `module` bindings, `let` frames, and backtick-escaped identifiers
+  when a name collides with a keyword.
+- Split tuple-based encoding/decoding out of `Data.JsonSpec` into
+  `Data.JsonSpec.Codec.Tuple` (`SpecJson`, `TupleEncoding`,
+  `TupleDecoding`, `Field`, etc.).
+- Rename JSON acronyms to camel case (for example `SpecJSON` →
+  `SpecJson`, `toJSONStructure` → `toJsonStructure`,
+  `JSONStructure` → `JsonStructure`).
+- Replace the old encode/decode class surface with a `Module`-centered
+  binding model (`Module`, `BindingSpec`, `JsonModule`, `:=`, `::=`).
+
 ## 1.4.0.1
 
 - Relax the `aeson` upper bound to allow 2.3.x.
