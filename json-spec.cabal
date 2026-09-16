@@ -36,9 +36,9 @@ common dependencies
     , aeson            >= 2.2.1.0  && < 2.4
     , base             >= 4.19.0.0 && < 4.23
     , containers       >= 0.6.8    && < 0.9
-    , megaparsec       >= 9.6.0    && < 9.8
+    , megaparsec       >= 9.6.0    && < 9.9
     , scientific       >= 0.3.7.0  && < 0.4
-    , template-haskell >= 2.21.0.0 && < 2.24
+    , template-haskell >= 2.21.0.0 && < 2.25
     , text             >= 2.1      && < 2.2
     , time             >= 1.9.3    && < 1.16
     , vector           >= 0.13.0.0 && < 0.14
