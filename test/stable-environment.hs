@@ -17,9 +17,10 @@
 module Main (main) where
 
 import Data.JsonSpec
-  ( HasJsonEncodingSpec(EncodingSpec, toJSONStructure), Ref(Ref)
-  , Specification(JsonLet, JsonRef, JsonString)
+  ( HasJsonEncodingSpec(EncodingSpec), Module(Module)
+  , Specification(JsonLet, JsonRef, JsonString), type (:=)
   )
+import Data.JsonSpec.Codec.Tuple (Ref(Ref), TupleEncoding(toJsonStructure))
 import Data.Text (Text)
 import Prelude (Applicative(pure), ($), (.), Eq, IO, Ord)
 
@@ -46,22 +47,23 @@ main =
 
 {-| Shared specification definitions. -}
 type TestShared a =
-  JsonLet
-    '[ '( "Foo"
-        , JsonLet '[ '("bar", JsonRef "Baz") ] (JsonRef "bar")
-        )
-     , '( "Baz" , JsonString)
-     ]
-    (JsonRef a)
+    JsonLet
+      '[ "Foo" :=
+           (JsonLet '[ "bar" := JsonRef "Baz" ] (JsonRef "bar"))
+       , "Baz" := JsonString
+       ]
+      (JsonRef a)
 
 
 newtype Foo = Foo Baz
   deriving stock (Eq, Ord)
 instance HasJsonEncodingSpec Foo where
   type EncodingSpec Foo =
-    TestShared "Foo"
-  toJSONStructure (Foo val) =
-    Ref . Ref . toJSONStructure $ val
+    'Module
+      (TestShared "Foo")
+instance TupleEncoding Foo where
+  toJsonStructure (Foo val) =
+    Ref . Ref . toJsonStructure $ val
 
 
 newtype Baz = Baz Text
@@ -71,7 +73,7 @@ newtype Baz = Baz Text
     )
 instance HasJsonEncodingSpec Baz where
   type EncodingSpec Baz =
-    TestShared "Baz"
-  toJSONStructure (Baz val) = Ref val
-
-
+    'Module
+      (TestShared "Baz")
+instance TupleEncoding Baz where
+  toJsonStructure (Baz val) = Ref val

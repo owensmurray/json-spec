@@ -41,26 +41,32 @@ data User = User
   , lastLogin :: UTCTime
   }
   deriving stock (Show, Eq)
-  deriving (ToJSON, FromJSON) via (SpecJSON User)
+  deriving (ToJSON, FromJSON) via (SpecJson User)
 instance HasJsonEncodingSpec User where
   type EncodingSpec User =
     JsonObject '[
       Required "name" JsonString,
       Required "last-login" JsonDateTime
     ]
-  toJSONStructure user =
+instance TupleEncoding User where
+  toJsonStructure user =
     (Field @"name" (name user),
     (Field @"last-login" (lastLogin user),
     ()))
 instance HasJsonDecodingSpec User where
   type DecodingSpec User = EncodingSpec User
-  fromJSONStructure
+instance TupleDecoding User where
+  fromJsonStructure
       (Field @"name" name,
       (Field @"last-login" lastLogin,
       ()))
     =
       pure User { name , lastLogin }
 ```
+
+Import `"Data.JsonSpec"` for the specification language and
+`"Data.JsonSpec.Codec.Tuple"` for the tuple codec (`Field`, `TupleEncoding`,
+`SpecJson`, etc.).
 
 For more examples, take a look at the test suite.
 

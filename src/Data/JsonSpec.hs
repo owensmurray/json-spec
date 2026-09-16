@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 
 {-|
+  Description : Type-level JSON specifications
+
   This module provides a way to specify the shape of your JSON data at
   the type level.
 
@@ -13,20 +13,23 @@
   >   , lastLogin :: UTCTime
   >   }
   >   deriving stock (Show, Eq)
-  >   deriving (ToJSON, FromJSON) via (SpecJSON User)
+  >   deriving (ToJSON, FromJSON) via (SpecJson User)
   > instance HasJsonEncodingSpec User where
   >   type EncodingSpec User =
-  >     JsonObject '[
-  >       Required "name" JsonString,
-  >       Required "last-login" JsonDateTime
-  >     ]
-  >   toJSONStructure user =
+  >     'Module
+  >       (JsonObject '[
+  >         Required "name" JsonString,
+  >         Required "last-login" JsonDateTime
+  >       ])
+  > instance TupleEncoding User where
+  >   toJsonStructure user =
   >     (Field @"name" (name user),
   >     (Field @"last-login" (lastLogin user),
   >     ()))
   > instance HasJsonDecodingSpec User where
   >   type DecodingSpec User = EncodingSpec User
-  >   fromJSONStructure
+  > instance TupleDecoding User where
+  >   fromJsonStructure
   >       (Field @"name" name,
   >       (Field @"last-login" lastLogin,
   >       ()))
@@ -66,78 +69,34 @@
   is still pretty new, but it at least includes OpenApi compatibility
   (i.e. ToSchema instances) and Elm code generation.
 
+  For the tuple-based encoding/decoding interpretation of a
+  'Specification', see "Data.JsonSpec.Codec.Tuple".
 -}
 module Data.JsonSpec (
   -- * Writing specifications
   Specification(..),
+  Module(..),
+  BindingSpec(..),
   (:::),
   (::?),
+  (:=),
+  (::=),
   FieldSpec(..),
 
-  -- * Encoding/decoding via a Specification
+  -- * Associating a type with a Module
   HasJsonEncodingSpec(..),
   HasJsonDecodingSpec(..),
-  SpecJSON(..),
-  Tag(..),
-  Field(..),
-  unField,
-  Ref(..),
-
-  -- * Direct encoding/decoding
-  eitherDecode,
-  encode,
-
-  -- * Other stuff
-  {-|
-    The items in this section are mainly exported because once in a
-    while you might need to include them in a type signature, but they
-    are not intended to be used directly.
-  -}
-  JSONStructure,
-  StructureFromJSON,
-  StructureToJSON,
 ) where
 
-import Data.Aeson (FromJSON(parseJSON), ToJSON(toJSON))
-import Data.JsonSpec.Decode
-  ( HasJsonDecodingSpec(DecodingSpec, fromJSONStructure)
-  , StructureFromJSON(reprParseJSON), eitherDecode
-  )
-import Data.JsonSpec.Encode
-  ( HasJsonEncodingSpec(EncodingSpec, toJSONStructure)
-  , StructureToJSON(reprToJSON), encode
-  )
 import Data.JsonSpec.Spec
-  ( Field(Field), FieldSpec(Optional, Required), Ref(Ref, unRef)
+  ( BindingSpec(ModuleBind, TypeBind), FieldSpec(Optional, Required)
+  , HasJsonDecodingSpec(DecodingSpec), HasJsonEncodingSpec(EncodingSpec)
+  , Module(Module)
   , Specification
     ( JsonAnnotated, JsonArray, JsonBool, JsonDateTime, JsonDict, JsonEither
-    , JsonInt, JsonLet, JsonNullable, JsonNum, JsonObject, JsonRaw, JsonRef
-    , JsonString, JsonTag
+    , JsonInt, JsonLet, JsonModule, JsonNullable, JsonNum, JsonObject, JsonRaw
+    , JsonRef, JsonString, JsonTag
     )
-  , Tag(Tag), (:::), (::?), JSONStructure, unField
+  , type (:::), type (::=), type (::?), type (:=)
   )
-import Prelude ((.), (<$>), (=<<))
-
-{- |
-  Helper for defining 'ToJSON' and 'FromJSON' instances based on
-  'HasEncodingJsonSpec'.
-
-  Use with -XDerivingVia like:
-
-  > data MyObj = MyObj
-  >   { foo :: Int
-  >   , bar :: Text
-  >   }
-  >   deriving (ToJSON, FromJSON) via (SpecJSON MyObj)
-  > instance HasEncodingSpec MyObj where ...
-  > instance HasDecodingSpec MyObj where ...
--}
-newtype SpecJSON a = SpecJSON {unSpecJson :: a}
-instance (StructureToJSON (JSONStructure (EncodingSpec a)), HasJsonEncodingSpec a) => ToJSON (SpecJSON a) where
-  toJSON = reprToJSON . toJSONStructure . unSpecJson
-instance (StructureFromJSON (JSONStructure (DecodingSpec a)), HasJsonDecodingSpec a) => FromJSON (SpecJSON a) where
-  parseJSON v =
-    SpecJSON <$>
-      (fromJSONStructure =<< reprParseJSON v)
-
 
